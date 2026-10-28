@@ -47,6 +47,10 @@ export const HealthCheckSchema = {
   },
 } as const;
 
+export type HealthCheckRequest = {
+  service?: string;
+};
+
 export type HealthCheckResponse = {
   status: "SERVING" | "NOT_SERVING" | "UNKNOWN";
   version: string;

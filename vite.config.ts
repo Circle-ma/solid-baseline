@@ -8,6 +8,9 @@ export default defineConfig({
     pandacss(),
     solid({
       start: true,
+      // Default is client-rendered SPA onto a prerendered static document shell.
+      // Set `ssr: true` to enable streaming server-side rendering with zero config changes.
+      ssr: false,
       /**
        * In dev mode, Solid 2.0 enables strict Reactivity Diagnostics by default.
        * Third-party component libraries written for Solid 1.x (such as Ark UI / Zag.js)
@@ -30,17 +33,9 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    // SpacetimeDB default server port is 3000. strictPort: false allows Vite
-    // to automatically fall back to 3001 if SpacetimeDB is running locally.
     strictPort: false,
   },
   build: {
     target: "esnext",
-    assetsInlineLimit: 0,
-    rolldownOptions: {
-      checks: {
-        invalidAnnotation: false,
-      },
-    },
   },
 });

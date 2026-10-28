@@ -1,12 +1,13 @@
 # Project Index for LLMs & AI Agents
 
-> Solid 2.0 + Ark UI + Park UI + Panda CSS + SpacetimeDB + ConnectRPC Starter
-> 2026 Modern Fullstack Foundation (Paved Path Edition)
+> Solid 2.0 + Ark UI + Panda CSS 2.4 + SpacetimeDB + ConnectRPC Starter
+> 2026 Modern SPA Foundation (Paved Path Edition)
 
 ## Architecture Overview
 - Runtime: Bun
+- Architecture: Solid 2.0 Start-Mode SPA (`Document.tsx` + `App.tsx`, 1-boolean SSR readiness)
 - Reactivity: Solid.js 2.0 (Zero VDOM, fine-grained signals)
-- UI Primitives: Ark UI 5.x (Zag.js state machines) & Park UI
+- UI Primitives: Ark UI 5.x (Zag.js state machines) & Panda CSS native recipes
 - Styling: Panda CSS with `strictTokens: true` & `strictPropertyValues: true`
 - Realtime Database: SpacetimeDB 2.x
 - RPC Transport: ConnectRPC

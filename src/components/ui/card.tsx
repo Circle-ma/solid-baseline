@@ -1,36 +1,17 @@
 import type { ComponentProps, ParentComponent } from "solid-js";
 import { omit } from "solid-js";
-import { css, cx } from "styled-system/css";
+import { cx } from "styled-system/css";
 import { card } from "styled-system/recipes";
-import { Heading, type HeadingProps, Text, type TextProps } from "./typography";
 
 /**
  * Root Card Container
- * Pre-composed container with systematic 24px padding and subtle card elevation.
- * Strict tokenized borders, padding, and radii.
+ * Encapsulated container with pre-configured padding, borders, and elevation.
  */
 export const CardRoot: ParentComponent<ComponentProps<"div">> = (props) => {
   const rest = omit(props, "class", "children");
+  const styles = card();
   return (
-    <div
-      {...rest}
-      class={cx(
-        card().root,
-        css({
-          display: "flex",
-          flexDirection: "column",
-          gap: "6",
-          p: "6",
-          borderRadius: "l3",
-          borderWidth: "1px",
-          borderStyle: "solid",
-          borderColor: "border.subtle",
-          bg: "bg.default",
-          boxShadow: "sm",
-        }),
-        props.class as string,
-      )}
-    >
+    <div {...rest} class={cx(styles.root, props.class as string)}>
       {props.children}
     </div>
   );
@@ -42,20 +23,9 @@ export const CardRoot: ParentComponent<ComponentProps<"div">> = (props) => {
  */
 export const CardHeader: ParentComponent<ComponentProps<"div">> = (props) => {
   const rest = omit(props, "class", "children");
+  const styles = card();
   return (
-    <div
-      {...rest}
-      class={cx(
-        card().header,
-        css({
-          display: "flex",
-          flexDirection: "column",
-          gap: "1.5",
-          w: "full",
-        }),
-        props.class as string,
-      )}
-    >
+    <div {...rest} class={cx(styles.header, props.class as string)}>
       {props.children}
     </div>
   );
@@ -65,16 +35,28 @@ export const CardHeader: ParentComponent<ComponentProps<"div">> = (props) => {
  * Card Title Slot Component
  * High-contrast semantic heading.
  */
-export const CardTitle: ParentComponent<HeadingProps> = (props) => {
-  return <Heading as="h3" size="lg" fontWeight="semibold" {...props} />;
+export const CardTitle: ParentComponent<ComponentProps<"h3">> = (props) => {
+  const rest = omit(props, "class", "children");
+  const styles = card();
+  return (
+    <h3 {...rest} class={cx(styles.title, props.class as string)}>
+      {props.children}
+    </h3>
+  );
 };
 
 /**
  * Card Description Slot Component
  * Muted explanatory text.
  */
-export const CardDescription: ParentComponent<TextProps> = (props) => {
-  return <Text size="sm" color="fg.muted" {...props} />;
+export const CardDescription: ParentComponent<ComponentProps<"p">> = (props) => {
+  const rest = omit(props, "class", "children");
+  const styles = card();
+  return (
+    <p {...rest} class={cx(styles.description, props.class as string)}>
+      {props.children}
+    </p>
+  );
 };
 
 /**
@@ -83,20 +65,9 @@ export const CardDescription: ParentComponent<TextProps> = (props) => {
  */
 export const CardBody: ParentComponent<ComponentProps<"div">> = (props) => {
   const rest = omit(props, "class", "children");
+  const styles = card();
   return (
-    <div
-      {...rest}
-      class={cx(
-        card().body,
-        css({
-          display: "flex",
-          flexDirection: "column",
-          gap: "4",
-          w: "full",
-        }),
-        props.class as string,
-      )}
-    >
+    <div {...rest} class={cx(styles.body, props.class as string)}>
       {props.children}
     </div>
   );
@@ -108,22 +79,9 @@ export const CardBody: ParentComponent<ComponentProps<"div">> = (props) => {
  */
 export const CardFooter: ParentComponent<ComponentProps<"div">> = (props) => {
   const rest = omit(props, "class", "children");
+  const styles = card();
   return (
-    <div
-      {...rest}
-      class={cx(
-        card().footer,
-        css({
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: "3",
-          w: "full",
-        }),
-        props.class as string,
-      )}
-    >
+    <div {...rest} class={cx(styles.footer, props.class as string)}>
       {props.children}
     </div>
   );

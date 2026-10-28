@@ -13,6 +13,7 @@ When generating UI and business logic, you must operate within strict rails:
 
 ## 1. Toolchain & Command Protocol
 
+- **Architecture**: Solid 2.0 Start-Mode SPA (`start: true, ssr: false`). Follows the official 2.0 convention (`src/Document.tsx` + `src/App.tsx`), with instant 1-boolean migration to streaming SSR (`ssr: true`).
 - **Runtime**: Strictly `bun` and `bunx`. Never execute `npm`, `npx`, `yarn`, or `pnpm`.
 - **Formatting**: `bun run format` (`biome format --write .`).
 - **Linting**: `bun run check` (`oxlint src && biome check .`).

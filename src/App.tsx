@@ -1,4 +1,5 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
+import "./index.css";
 import {
   Badge,
   Box,
@@ -14,6 +15,7 @@ import {
   Text,
   VStack,
 } from "~/components/ui";
+import { checkSystemHealth, isRpcPending, rpcLatencyMs, rpcResponse } from "~/lib/connect";
 import {
   callReducer,
   clientIdentity,
@@ -36,13 +38,13 @@ export default function App() {
           <VStack gap="3" alignItems="stretch">
             <HStack gap="3" alignItems="center">
               <Heading as="h1" size="2xl" letterSpacing="tight">
-                Solid 2.0 Foundation Architecture
+                Solid 2.0 Baseline Architecture
               </Heading>
               <Badge variant="subtle">2026 Core</Badge>
             </HStack>
             <Text size="sm" color="fg.muted" lineHeight="relaxed">
-              Universal fullstack template powered by Bun, Vite (Rolldown), Solid 2.0, Ark UI, Panda
-              CSS, Park UI, SpacetimeDB, and ConnectRPC.
+              High-performance, type-safe SPA starter engineered with Bun, Vite, Solid 2.0, Ark UI,
+              Panda CSS, SpacetimeDB, ConnectRPC, Oxlint, and Biome.
             </Text>
           </VStack>
 
@@ -103,7 +105,7 @@ export default function App() {
             {/* Card 2: Headless State Machines */}
             <Card.Root>
               <Card.Header>
-                <Card.Title>Ark UI & Park UI</Card.Title>
+                <Card.Title>Ark UI Headless Modal</Card.Title>
                 <Card.Description>
                   Accessible primitives powered by Zag.js state machines.
                 </Card.Description>
@@ -111,8 +113,8 @@ export default function App() {
               <Card.Body>
                 <VStack gap="4" alignItems="flex-start">
                   <Text size="sm" color="fg.muted">
-                    Triggers are polymorphic elements. Systematic component encapsulation with
-                    baked-in padding.
+                    Triggers are polymorphic elements. Autonomous physical DOM teardown on ESC or
+                    dismissal with zero ghost overlays.
                   </Text>
 
                   <Dialog.Root lazyMount unmountOnExit>
@@ -122,22 +124,20 @@ export default function App() {
                       <Dialog.Backdrop />
                       <Dialog.Positioner>
                         <Dialog.Content>
-                          {/* Built-in top-right close trigger */}
                           <Dialog.CloseTrigger />
 
                           <Dialog.Header>
                             <Dialog.Title>Zag.js State Machine</Dialog.Title>
                             <Dialog.Description>
-                              Encapsulated modal architecture powered by Zag.js and Park UI design
+                              Encapsulated modal architecture powered by Zag.js and Panda CSS design
                               tokens.
                             </Dialog.Description>
                           </Dialog.Header>
 
                           <Dialog.Body>
                             <Text size="sm">
-                              This modal systematically bakes in 24px container padding, responsive
-                              max-width, focus restoration, and keyboard Escape dismissal with zero
-                              ghost overlays.
+                              This modal encapsulates container padding, responsive max-width, focus
+                              restoration, and keyboard Escape dismissal.
                             </Text>
                           </Dialog.Body>
 
@@ -158,7 +158,7 @@ export default function App() {
             </Card.Root>
           </Grid>
 
-          {/* Card 3: SpacetimeDB Realtime Table & Reducers */}
+          {/* Card 3: SpacetimeDB Realtime Engine */}
           <Card.Root>
             <Card.Header>
               <HStack justifyContent="space-between" alignItems="center">
@@ -179,7 +179,6 @@ export default function App() {
 
             <Card.Body>
               <VStack gap="4" alignItems="stretch">
-                {/* Action Bar */}
                 <HStack
                   justifyContent="space-between"
                   alignItems="center"
@@ -217,7 +216,6 @@ export default function App() {
                   </Button>
                 </HStack>
 
-                {/* Table Feed */}
                 <VStack
                   gap="2"
                   alignItems="stretch"
@@ -256,6 +254,87 @@ export default function App() {
                     )}
                   </For>
                 </VStack>
+              </VStack>
+            </Card.Body>
+          </Card.Root>
+
+          {/* Card 4: ConnectRPC Service Integration */}
+          <Card.Root>
+            <Card.Header>
+              <HStack justifyContent="space-between" alignItems="center">
+                <VStack gap="1" alignItems="flex-start">
+                  <Card.Title>ConnectRPC Client Pipeline</Card.Title>
+                  <Card.Description>
+                    Type-safe Protobuf and JSON RPC over standard HTTP/1.1 and HTTP/2 fetch.
+                  </Card.Description>
+                </VStack>
+                <Badge variant={rpcResponse() ? "solid" : "subtle"}>
+                  {rpcResponse() ? `Status: ${rpcResponse()?.status}` : "Uncalled"}
+                </Badge>
+              </HStack>
+            </Card.Header>
+
+            <Card.Body>
+              <VStack gap="4" alignItems="stretch">
+                <HStack
+                  justifyContent="space-between"
+                  alignItems="center"
+                  p="3"
+                  bg="bg.subtle"
+                  borderRadius="l2"
+                >
+                  <HStack gap="4" alignItems="center">
+                    <Text size="xs" color="fg.muted">
+                      SERVICE:{" "}
+                      <Text as="span" fontWeight="bold" color="fg.default">
+                        system.v1.SystemService
+                      </Text>
+                    </Text>
+                    <Show when={rpcLatencyMs() !== null}>
+                      <Text size="xs" color="accent.default">
+                        LATENCY:{" "}
+                        <Text as="span" fontWeight="bold">
+                          {rpcLatencyMs()}ms
+                        </Text>
+                      </Text>
+                    </Show>
+                  </HStack>
+                  <Button
+                    variant="solid"
+                    size="sm"
+                    disabled={isRpcPending()}
+                    onClick={() => checkSystemHealth()}
+                  >
+                    {isRpcPending() ? "Calling RPC..." : "📡 Invoke HealthCheck RPC"}
+                  </Button>
+                </HStack>
+
+                <Show when={rpcResponse()}>
+                  {(res) => (
+                    <HStack
+                      justifyContent="space-between"
+                      alignItems="center"
+                      p="3"
+                      bg="bg.canvas"
+                      borderRadius="l2"
+                      borderWidth="1px"
+                      borderStyle="solid"
+                      borderColor="border.subtle"
+                    >
+                      <HStack gap="2" alignItems="center">
+                        <Badge variant="solid" size="sm">
+                          {res().status}
+                        </Badge>
+                        <Text size="xs" color="fg.muted">
+                          Version: {res().version}
+                        </Text>
+                      </HStack>
+                      <Text size="xs" color="fg.muted">
+                        Uptime: {res().uptimeSeconds}s
+                      </Text>
+                    </HStack>
+                  )}
+                </Show>
               </VStack>
             </Card.Body>
           </Card.Root>

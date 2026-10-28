@@ -56,4 +56,4 @@ Complex multi-part components encapsulate their internal spatial rhythm and hier
 ### 6. Solid 2.0 Props & Reactivity
 - Props must be read directly as `props.value` (Never destructure).
 - Forward props via `const rest = omit(props, "class", "children")` from `"solid-js"`.
-- Modals must pair controlled state (`open={isOpen()}`) with `<Dialog.Portal when={isOpen()}>` for 100% physical DOM teardown on ESC or dismissal.
+- Modals operate headlessly via Zag.js state machines. `<Dialog.Portal>` internally binds to `useDialogContext()` and `<Show when={dialog().open}>`, guaranteeing 100% clean physical DOM teardown on ESC or dismissal with zero ghost overlays and zero signal boilerplate.

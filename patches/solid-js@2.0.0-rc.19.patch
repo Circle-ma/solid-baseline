@@ -1,5 +1,5 @@
 diff --git a/dist/server.dev.js b/dist/server.dev.js
-index a8f6cf7..541135c 100644
+index a8f6cf704514d34da5f589a5de224685589d111a..ef326e56093c01738390ba2ac431041a7e902923 100644
 --- a/dist/server.dev.js
 +++ b/dist/server.dev.js
 @@ -2434,6 +2434,7 @@ function createContext(defaultValue, options) {
@@ -9,6 +9,15 @@ index a8f6cf7..541135c 100644
 +  provider.Provider = provider;
    if (arguments.length && defaultValue === undefined) provider._undefinedDefault = true;
    return provider;
+ }
+@@ -3912,7 +3913,7 @@ function forwardIteratorReturn(it, value) {
+     value
+   });
+ }
+-{
++if (OBSERVE$1) {
+   OBSERVE$1.server = serverSlots();
+   installServerWithOrigin(OBSERVE$1);
  }
 @@ -3920,4 +3921,43 @@ const OBSERVE = OBSERVE$1 ;
  const DEV = DEV$1 ;
@@ -25,7 +34,7 @@ index a8f6cf7..541135c 100644
 +}
 +
 +function onMount() {}
-+function on(deps, fn) { return () => {}; }
++const compatOn = (_deps, _fn) => () => {};
 +function splitProps(props, ...descriptors) {
 +  const result = descriptors.map(() => ({}));
 +  const other = {};
@@ -52,11 +61,11 @@ index a8f6cf7..541135c 100644
 +  result.push(other);
 +  return result;
 +}
-+function createEffect() {}
++const compatEffect = () => {};
 +function mergeProps(...sources) { return merge(...sources); }
-+export { onMount, splitProps, on, createEffect, mergeProps };
++export { onMount, splitProps, compatOn as on, compatEffect as createEffect, mergeProps };
 diff --git a/dist/server.js b/dist/server.js
-index 306cf29..1d33c86 100644
+index 306cf2909918be709616ef63b61ac54d7271ed50..762341fe79e632fb489de4ad2d386876d1ad43e8 100644
 --- a/dist/server.js
 +++ b/dist/server.js
 @@ -2258,6 +2258,7 @@ function createContext(defaultValue, options) {
@@ -67,8 +76,12 @@ index 306cf29..1d33c86 100644
    return provider;
  }
  function useContext(context) {
-@@ -3555,4 +3556,43 @@ function forwardIteratorReturn(it, value) {
- const OBSERVE = undefined;
+@@ -3552,7 +3553,46 @@ function forwardIteratorReturn(it, value) {
+     value
+   });
+ }
+-const OBSERVE = undefined;
++const OBSERVE = {};
  const DEV = undefined;
  
 -export { $DEVCOMP, DEV, Errored, For, Hydration, Loading, Match, NoHydration, OBSERVE, ROOT_ERROR_HOOK, Repeat, Reveal, Show, Switch, UNASKED, action, adoptedAnswerStream, affects, applyPatches, beginEdgesRender, children, configureClientErrors, createComponent, createContext, createDeepProxy, createDeferred, createEffect, createErrorBoundary, createLoadingBoundary, createMemo, createOptimistic, createOptimisticStore, createOwner, createProjection, createReaction, createRenderEffect, createRevealOrder, createRoot, createSignal, createStore, createTrackedEffect, createUniqueId, creationStamp, deep, dynamicComponent, dynamicCore, enableHydration, enableServerComponentHydration, flush, forwardIteratorReturn, from, getNextChildId, getObserver, getOwner, getProjectionTrace, hasLoadingWindow, inLiveServerComponentScope, inServerComponentScope, isAsyncIterable, isDisposed, isHydratable, isHydrating, isPending, latest, lazy, lazyModule, mapArray, markTopLevelSnapshotScope, merge, noHydrationId, onCleanup, onFlush, onHydrationEnd, onSettled, readHydratedValue, readSerializedOrCompute, reconcile, refresh, repeat, reportServerError, resetErrorHalt, resolve, runInServerComponentScope, runWithOwner, setReadWatch, setSignalIdentities, setWriteHook, shareAsyncIterable, sharedConfig, signalName, ssrHandleError, ssrSanitizeError, ssrScope, storeName, subFetch, syncThenable, trackFillReads, until, untrack, useContext, withHydrationGate, wrapFirstYield };
@@ -113,7 +126,7 @@ index 306cf29..1d33c86 100644
 +function mergeProps(...sources) { return merge(...sources); }
 +export { onMount, splitProps, on, createEffect, mergeProps };
 diff --git a/dist/solid.dev.js b/dist/solid.dev.js
-index 14ae6f6..336aa0f 100644
+index 14ae6f6bf5fc3c9e725869782f8986a8476adb54..336aa0feef1d42c6fbbec71adcd60476cb246887 100644
 --- a/dist/solid.dev.js
 +++ b/dist/solid.dev.js
 @@ -1,3 +1,4 @@
@@ -216,7 +229,7 @@ index 14ae6f6..336aa0f 100644
 +}
 +export { onMount, mergeProps, splitProps, on, compatCreateEffect as createEffect, compatCreateSignal as createSignal };
 diff --git a/dist/solid.js b/dist/solid.js
-index 5393b40..00126d2 100644
+index 5393b4055774fc765dbe5001faf5cecd5315a7a8..00126d2c4b484e640eb7c199129f3e0063c2ef3b 100644
 --- a/dist/solid.js
 +++ b/dist/solid.js
 @@ -1,3 +1,4 @@
@@ -319,7 +332,7 @@ index 5393b40..00126d2 100644
 +}
 +export { onMount, mergeProps, splitProps, on, compatCreateEffect as createEffect, compatCreateSignal as createSignal };
 diff --git a/package.json b/package.json
-index 9b2c62e..96c8869 100644
+index 9b2c62e73a6acc8843118bec86e27e006072ec4b..96c8869534bea084ad3b96046777dfbc2d2ae3d0 100644
 --- a/package.json
 +++ b/package.json
 @@ -109,7 +109,11 @@
@@ -336,7 +349,7 @@ index 9b2c62e..96c8869 100644
    "scripts": {
      "build": "npm-run-all -nl build:*",
 diff --git a/types/index.d.ts b/types/index.d.ts
-index 0eafe7f..65f8de5 100644
+index 0eafe7ff349042fa7d83ca3e7db8018c27aa1357..65f8de54eda9ec5932f1bc31ed361af7c6ee241d 100644
 --- a/types/index.d.ts
 +++ b/types/index.d.ts
 @@ -33,3 +33,4 @@ export type { ChangeOrigin } from "@solidjs/signals/attribution";

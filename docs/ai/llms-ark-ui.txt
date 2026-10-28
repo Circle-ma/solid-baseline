@@ -13,36 +13,33 @@ It handles state, ARIA attributes, keyboard navigation, and focus management wit
 All Ark UI Solid components follow a compound component structure using dot-notation:
 
 ```tsx
-import { Dialog } from '@ark-ui/solid/dialog'
-import { Portal } from '@solidjs/web'
-import { createSignal, Show } from 'solid-js'
-import { button, dialog } from 'styled-system/recipes'
+import { Button, Dialog, Text } from "~/components/ui";
 
 export function CustomDialog() {
-  const [open, setOpen] = createSignal(false);
-  const classes = dialog();
-
   return (
-    <Dialog.Root open={open()} onOpenChange={(e) => setOpen(e.open)} lazyMount unmountOnExit>
-      <Dialog.Trigger class={button({ variant: "outline" })}>
-        Open Dialog
-      </Dialog.Trigger>
-      <Show when={open()}>
-        <Portal>
-          <Dialog.Backdrop class={classes.backdrop} />
-          <Dialog.Positioner class={classes.positioner}>
-            <Dialog.Content class={classes.content}>
-              <Dialog.Title class={classes.title}>Dialog Header</Dialog.Title>
-              <Dialog.Description class={classes.description}>Dialog Content Details</Dialog.Description>
-              <Dialog.CloseTrigger class={button({ variant: "solid" })}>
-                Close
-              </Dialog.CloseTrigger>
-            </Dialog.Content>
-          </Dialog.Positioner>
-        </Portal>
-      </Show>
+    <Dialog.Root lazyMount unmountOnExit>
+      <Dialog.Trigger variant="outline">Open Dialog</Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content>
+            <Dialog.CloseTrigger />
+            <Dialog.Header>
+              <Dialog.Title>Autonomous Dialog</Dialog.Title>
+              <Dialog.Description>State machine powered modal</Dialog.Description>
+            </Dialog.Header>
+            <Dialog.Body>
+              <Text size="sm">Clean physical DOM teardown on ESC with zero signal boilerplate.</Text>
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Dialog.CloseTrigger variant="outline" size="sm">Cancel</Dialog.CloseTrigger>
+              <Dialog.CloseTrigger variant="solid" size="sm">Confirm</Dialog.CloseTrigger>
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Dialog.Portal>
     </Dialog.Root>
-  )
+  );
 }
 ```
 

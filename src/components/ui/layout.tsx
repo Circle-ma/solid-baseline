@@ -1,25 +1,21 @@
 import type { ComponentProps, ParentComponent } from "solid-js";
 import { omit } from "solid-js";
-import { css, cx } from "styled-system/css";
+import { cx } from "styled-system/css";
 import { box, container, divider, grid, hstack, vstack } from "styled-system/patterns";
-import type { ColorToken, RadiusToken, SizeToken, SpacingToken } from "./tokens";
+import type { SystemProperties } from "styled-system/types/system";
+import type { ColorToken } from "./tokens";
 
-/**
- * Box Container Primitive
- * High-performance layout wrapper for background, padding, and viewport boundaries.
- * Strictly bounded by design tokens (Zero Hex Colors & Zero Magic Numbers).
- */
 export interface BoxProps extends ComponentProps<"div"> {
-  minH?: SizeToken | "100vh" | "100dvh" | "screen" | "full";
-  minW?: SizeToken | "full" | "auto";
-  w?: SizeToken | "full" | "auto";
-  h?: SizeToken | "full" | "auto";
-  bg?: ColorToken;
-  color?: ColorToken;
-  p?: SpacingToken;
-  px?: SpacingToken;
-  py?: SpacingToken;
-  borderRadius?: RadiusToken;
+  minH?: SystemProperties["minHeight"];
+  minW?: SystemProperties["minWidth"];
+  w?: SystemProperties["width"];
+  h?: SystemProperties["height"];
+  bg?: SystemProperties["backgroundColor"];
+  color?: SystemProperties["color"];
+  p?: SystemProperties["padding"];
+  px?: SystemProperties["paddingInline"];
+  py?: SystemProperties["paddingBlock"];
+  borderRadius?: SystemProperties["borderRadius"];
 }
 
 export const Box: ParentComponent<BoxProps> = (props) => {
@@ -43,19 +39,17 @@ export const Box: ParentComponent<BoxProps> = (props) => {
       {...rest}
       class={cx(
         box({
-          minH: props.minH as any,
-          minW: props.minW as any,
-          w: props.w as any,
-          h: props.h as any,
-          bg: props.bg as any,
-          color: props.color as any,
-          p: props.p as any,
-          px: props.px as any,
-          py: props.py as any,
-        }),
-        css({
+          minH: props.minH,
+          minW: props.minW,
+          w: props.w,
+          h: props.h,
+          bg: props.bg,
+          color: props.color,
+          p: props.p,
+          px: props.px,
+          py: props.py,
+          borderRadius: props.borderRadius,
           boxSizing: "border-box",
-          borderRadius: props.borderRadius as any,
         }),
         props.class as string,
       )}
@@ -65,16 +59,11 @@ export const Box: ParentComponent<BoxProps> = (props) => {
   );
 };
 
-/**
- * Container Layout Primitive
- * Constrains content width horizontally with responsive side paddings.
- * Strictly bounded by design tokens.
- */
 export interface ContainerProps extends ComponentProps<"div"> {
-  maxW?: SizeToken;
-  p?: SpacingToken;
-  px?: SpacingToken;
-  py?: SpacingToken;
+  maxW?: SystemProperties["maxWidth"];
+  p?: SystemProperties["padding"];
+  px?: SystemProperties["paddingInline"];
+  py?: SystemProperties["paddingBlock"];
 }
 
 export const Container: ParentComponent<ContainerProps> = (props) => {
@@ -84,12 +73,10 @@ export const Container: ParentComponent<ContainerProps> = (props) => {
       {...rest}
       class={cx(
         container({
-          maxW: props.maxW as any,
-          p: props.p as any,
-          px: props.px as any,
-          py: props.py as any,
-        }),
-        css({
+          maxW: props.maxW,
+          p: props.p,
+          px: props.px,
+          py: props.py,
           w: "full",
         }),
         props.class as string,
@@ -100,32 +87,26 @@ export const Container: ParentComponent<ContainerProps> = (props) => {
   );
 };
 
-/**
- * VStack Layout Primitive
- * Flexbox vertical column layout strictly governed by `gap` and alignment.
- * Margin is completely forbidden.
- * Strictly bounded by design tokens.
- */
 export interface VStackProps extends ComponentProps<"div"> {
-  gap?: SpacingToken;
-  alignItems?: "stretch" | "center" | "flex-start" | "flex-end" | "baseline";
-  justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around";
-  minH?: SizeToken | "100vh" | "100dvh" | "screen" | "full";
-  maxH?: SizeToken;
-  h?: SizeToken | "full" | "auto";
-  minW?: SizeToken | "full" | "auto";
-  maxW?: SizeToken;
-  w?: SizeToken | "full" | "auto";
-  overflowY?: "auto" | "hidden" | "scroll" | "visible";
-  borderWidth?: "1px";
-  borderStyle?: "solid";
-  borderColor?: ColorToken;
-  borderRadius?: RadiusToken;
-  p?: SpacingToken;
-  px?: SpacingToken;
-  py?: SpacingToken;
-  bg?: ColorToken;
-  color?: ColorToken;
+  gap?: SystemProperties["gap"];
+  alignItems?: SystemProperties["alignItems"];
+  justifyContent?: SystemProperties["justifyContent"];
+  minH?: SystemProperties["minHeight"];
+  maxH?: SystemProperties["maxHeight"];
+  h?: SystemProperties["height"];
+  minW?: SystemProperties["minWidth"];
+  maxW?: SystemProperties["maxWidth"];
+  w?: SystemProperties["width"];
+  overflowY?: SystemProperties["overflowY"];
+  borderWidth?: SystemProperties["borderWidth"];
+  borderStyle?: SystemProperties["borderStyle"];
+  borderColor?: SystemProperties["borderColor"];
+  borderRadius?: SystemProperties["borderRadius"];
+  p?: SystemProperties["padding"];
+  px?: SystemProperties["paddingInline"];
+  py?: SystemProperties["paddingBlock"];
+  bg?: SystemProperties["backgroundColor"];
+  color?: SystemProperties["color"];
 }
 
 export const VStack: ParentComponent<VStackProps> = (props) => {
@@ -158,27 +139,25 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
       {...rest}
       class={cx(
         vstack({
-          gap: (props.gap ?? "4") as any,
-          alignItems: (props.alignItems ?? "stretch") as any,
-          justify: props.justifyContent as any,
-        }),
-        css({
-          minH: props.minH as any,
-          maxH: props.maxH as any,
-          h: props.h as any,
-          minW: props.minW as any,
-          maxW: props.maxW as any,
-          w: props.w as any,
-          overflowY: props.overflowY as any,
-          borderWidth: props.borderWidth as any,
-          borderStyle: props.borderStyle as any,
-          borderColor: props.borderColor as any,
-          borderRadius: props.borderRadius as any,
-          p: props.p as any,
-          px: props.px as any,
-          py: props.py as any,
-          bg: props.bg as any,
-          color: props.color as any,
+          gap: props.gap ?? "4",
+          alignItems: props.alignItems ?? "stretch",
+          justify: props.justifyContent,
+          minH: props.minH,
+          maxH: props.maxH,
+          h: props.h,
+          minW: props.minW,
+          maxW: props.maxW,
+          w: props.w,
+          overflowY: props.overflowY,
+          borderWidth: props.borderWidth,
+          borderStyle: props.borderStyle,
+          borderColor: props.borderColor,
+          borderRadius: props.borderRadius,
+          p: props.p,
+          px: props.px,
+          py: props.py,
+          bg: props.bg,
+          color: props.color,
         }),
         props.class as string,
       )}
@@ -188,32 +167,25 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
   );
 };
 
-/**
- * HStack Layout Primitive
- * Flexbox horizontal row layout strictly governed by `gap` and alignment.
- * Margin is completely forbidden.
- * Strictly bounded by design tokens.
- */
 export interface HStackProps extends ComponentProps<"div"> {
-  gap?: SpacingToken;
-  alignItems?: "stretch" | "center" | "flex-start" | "flex-end" | "baseline";
-  justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around";
-  minH?: SizeToken | "100vh" | "100dvh" | "screen" | "full";
-  maxH?: SizeToken;
-  h?: SizeToken | "full" | "auto";
-  minW?: SizeToken | "full" | "auto";
-  maxW?: SizeToken;
-  w?: SizeToken | "full" | "auto";
-  overflowX?: "auto" | "hidden" | "scroll" | "visible";
-  p?: SpacingToken;
-  px?: SpacingToken;
-  py?: SpacingToken;
-  bg?: ColorToken;
-  color?: ColorToken;
-  borderRadius?: RadiusToken;
-  borderWidth?: "1px";
-  borderStyle?: "solid";
-  borderColor?: ColorToken;
+  gap?: SystemProperties["gap"];
+  alignItems?: SystemProperties["alignItems"];
+  justifyContent?: SystemProperties["justifyContent"];
+  minH?: SystemProperties["minHeight"];
+  maxH?: SystemProperties["maxHeight"];
+  h?: SystemProperties["height"];
+  minW?: SystemProperties["minWidth"];
+  maxW?: SystemProperties["maxWidth"];
+  w?: SystemProperties["width"];
+  borderWidth?: SystemProperties["borderWidth"];
+  borderStyle?: SystemProperties["borderStyle"];
+  borderColor?: SystemProperties["borderColor"];
+  borderRadius?: SystemProperties["borderRadius"];
+  p?: SystemProperties["padding"];
+  px?: SystemProperties["paddingInline"];
+  py?: SystemProperties["paddingBlock"];
+  bg?: SystemProperties["backgroundColor"];
+  color?: SystemProperties["color"];
 }
 
 export const HStack: ParentComponent<HStackProps> = (props) => {
@@ -228,16 +200,15 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
     "minW",
     "maxW",
     "w",
-    "overflowX",
+    "borderWidth",
+    "borderStyle",
+    "borderColor",
+    "borderRadius",
     "p",
     "px",
     "py",
     "bg",
     "color",
-    "borderRadius",
-    "borderWidth",
-    "borderStyle",
-    "borderColor",
     "class",
     "children",
   );
@@ -246,27 +217,24 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
       {...rest}
       class={cx(
         hstack({
-          gap: (props.gap ?? "3") as any,
-          alignItems: (props.alignItems ?? "center") as any,
-          justify: props.justifyContent as any,
-        }),
-        css({
-          minH: props.minH as any,
-          maxH: props.maxH as any,
-          h: props.h as any,
-          minW: props.minW as any,
-          maxW: props.maxW as any,
-          w: props.w as any,
-          overflowX: props.overflowX as any,
-          p: props.p as any,
-          px: props.px as any,
-          py: props.py as any,
-          bg: props.bg as any,
-          color: props.color as any,
-          borderRadius: props.borderRadius as any,
-          borderWidth: props.borderWidth as any,
-          borderStyle: props.borderStyle as any,
-          borderColor: props.borderColor as any,
+          gap: props.gap ?? "3",
+          alignItems: props.alignItems ?? "center",
+          justify: props.justifyContent,
+          minH: props.minH,
+          maxH: props.maxH,
+          h: props.h,
+          minW: props.minW,
+          maxW: props.maxW,
+          w: props.w,
+          borderWidth: props.borderWidth,
+          borderStyle: props.borderStyle,
+          borderColor: props.borderColor,
+          borderRadius: props.borderRadius,
+          p: props.p,
+          px: props.px,
+          py: props.py,
+          bg: props.bg,
+          color: props.color,
         }),
         props.class as string,
       )}
@@ -276,25 +244,53 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
   );
 };
 
-/**
- * Grid Layout Primitive
- * CSS Grid layout strictly governed by `columns` and `gap`.
- * Strictly bounded by design tokens.
- */
 export interface GridProps extends ComponentProps<"div"> {
-  columns?: 1 | 2 | 3 | 4 | 5 | 6 | 12;
-  gap?: SpacingToken;
+  columns?: number;
+  gap?: SystemProperties["gap"];
+  rowGap?: SystemProperties["rowGap"];
+  columnGap?: SystemProperties["columnGap"];
+  alignItems?: SystemProperties["alignItems"];
+  justifyContent?: SystemProperties["justifyContent"];
+  w?: SystemProperties["width"];
+  minH?: SystemProperties["minHeight"];
+  p?: SystemProperties["padding"];
+  px?: SystemProperties["paddingInline"];
+  py?: SystemProperties["paddingBlock"];
 }
 
 export const Grid: ParentComponent<GridProps> = (props) => {
-  const rest = omit(props, "columns", "gap", "class", "children");
+  const rest = omit(
+    props,
+    "columns",
+    "gap",
+    "rowGap",
+    "columnGap",
+    "alignItems",
+    "justifyContent",
+    "w",
+    "minH",
+    "p",
+    "px",
+    "py",
+    "class",
+    "children",
+  );
   return (
     <div
       {...rest}
       class={cx(
         grid({
-          columns: (props.columns ?? 1) as any,
-          gap: (props.gap ?? "6") as any,
+          columns: props.columns ?? 1,
+          gap: props.gap ?? "6",
+          rowGap: props.rowGap,
+          columnGap: props.columnGap,
+          alignItems: props.alignItems,
+          justifyContent: props.justifyContent,
+          w: props.w ?? "full",
+          minH: props.minH,
+          p: props.p,
+          px: props.px,
+          py: props.py,
         }),
         props.class as string,
       )}
@@ -304,25 +300,23 @@ export const Grid: ParentComponent<GridProps> = (props) => {
   );
 };
 
-/**
- * Divider Primitive
- * Clean border separation between content sections.
- * Strictly bounded by design tokens.
- */
 export interface DividerProps extends ComponentProps<"hr"> {
-  borderColor?: ColorToken;
   orientation?: "horizontal" | "vertical";
+  thickness?: SystemProperties["borderWidth"];
+  color?: ColorToken;
+  borderColor?: ColorToken;
 }
 
 export const Divider: ParentComponent<DividerProps> = (props) => {
-  const rest = omit(props, "borderColor", "orientation", "class");
+  const rest = omit(props, "orientation", "thickness", "color", "borderColor", "class", "children");
   return (
     <hr
       {...rest}
       class={cx(
         divider({
-          borderColor: (props.borderColor ?? "border.subtle") as any,
-          orientation: props.orientation,
+          orientation: props.orientation ?? "horizontal",
+          thickness: props.thickness ?? "1px",
+          color: props.borderColor ?? props.color ?? "border.subtle",
         }),
         props.class as string,
       )}
