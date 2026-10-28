@@ -6,18 +6,19 @@ A high-performance, type-safe, zero-tech-debt starter framework engineered for t
 
 ## ⚡ The 2026 Tech Stack
 
-| Domain           | Technology                              | Version    | Purpose & Rationale                                                           |
-| :--------------- | :-------------------------------------- | :--------- | :---------------------------------------------------------------------------- |
-| **Architecture** | Solid 2.0 Start-Mode SPA                | `Standard` | Unified 2.0 convention (`Document.tsx` + `App.tsx`), 1-boolean SSR readiness. |
-| **Runtime & PM** | [Bun](https://bun.sh/)                  | `1.4.x`    | Blazing fast execution, unified package manager, native TS/JSX support.       |
-| **Bundler**      | [Vite](https://vite.dev/) (Rolldown)    | `8.3.x`    | Instant HMR and lightning-fast ESNext client bundle extraction (<120ms).      |
-| **Reactive UI**  | [Solid.js 2.0](https://v2.solidjs.com/) | `2.0.0-rc` | Fine-grained reactivity, Zero-VDOM, async-first computations, draft stores.   |
-| **Headless UI**  | [Ark UI](https://ark-ui.com/)           | `5.39.x`   | Accessible, robust state machines powered by [Zag.js](https://zagjs.com/).    |
-| **Styling**      | [Panda CSS](https://panda-css.com/)     | `2.4.x`    | Zero-runtime build-time CSS-in-JS with strict tokens & native slot recipes.   |
-| **Linter**       | [Oxlint](https://oxc.rs/)               | `1.79.x`   | Rust-based ultra-fast linter with Solid 2.0 reactivity rules.                 |
-| **Formatter**    | [Biome](https://biomejs.dev/)           | `2.6.x`    | Blazing-fast Rust formatter and import organizer (replaces Prettier).         |
-| **Realtime DB**  | [SpacetimeDB](https://spacetimedb.com/) | `2.13.x`   | In-memory relational database with WebSocket client cache synchronization.    |
-| **Typed RPC**    | [ConnectRPC](https://connectrpc.com/)   | `2.3.x`    | Type-safe Protobuf and JSON RPC for microservices & payment APIs.             |
+| Domain           | Technology                                              | Version      | Purpose & Rationale                                                           |
+| :--------------- | :------------------------------------------------------ | :----------- | :---------------------------------------------------------------------------- |
+| **Architecture** | Solid 2.0 Start-Mode SPA                                | `Standard`   | Unified 2.0 convention (`Document.tsx` + `App.tsx`), 1-boolean SSR readiness. |
+| **Runtime & PM** | [Bun](https://bun.sh/)                                  | `1.4.x`      | Blazing fast execution, unified package manager, native TS/JSX support.       |
+| **Bundler**      | [Vite](https://vite.dev/) (Rolldown)                    | `8.3.x`      | Instant HMR and lightning-fast ESNext client bundle extraction (<130ms).      |
+| **Reactive UI**  | [Solid.js 2.0](https://v2.solidjs.com/)                 | `2.0.0-rc`   | Fine-grained reactivity, Zero-VDOM, async-first computations, draft stores.   |
+| **Routing**      | [Solid Router](https://github.com/solidjs/solid-router) | `2.0.0-next` | Declarative routing with `createRouter`, `defineRoute`, typed `paths`.        |
+| **Headless UI**  | [Ark UI](https://ark-ui.com/)                           | `5.39.x`     | Accessible, robust state machines powered by [Zag.js](https://zagjs.com/).    |
+| **Styling**      | [Panda CSS](https://panda-css.com/)                     | `2.4.x`      | Zero-runtime build-time CSS-in-JS with strict tokens & native slot recipes.   |
+| **Linter**       | [Oxlint](https://oxc.rs/)                               | `1.90.x`     | Rust-based ultra-fast linter with Solid 2.0 reactivity rules.                 |
+| **Formatter**    | [Biome](https://biomejs.dev/)                           | `2.6.x`      | Blazing-fast Rust formatter and import organizer (replaces Prettier).         |
+| **Realtime DB**  | [SpacetimeDB](https://spacetimedb.com/)                 | `2.13.x`     | In-memory relational database with WebSocket client cache synchronization.    |
+| **Typed RPC**    | [ConnectRPC](https://connectrpc.com/)                   | `2.3.x`      | Type-safe Protobuf and JSON RPC for microservices & payment APIs.             |
 
 ---
 
@@ -31,7 +32,21 @@ A high-performance, type-safe, zero-tech-debt starter framework engineered for t
 - **Draft Stores**: Modify stores inside draft closures: `setStore(draft => { draft.user.name = "Alex"; })`.
 - **Boundaries**: Use `<Loading>` for async boundaries and `<Errored>` for error handling. (No `<Suspense>` or `<ErrorBoundary>`).
 
-### 2. Layout & Styling: Paved Path Design Rails
+### 2. Universal Solid Router 2.0
+
+- **Declarative Router Setup**: Defined using `defineRoutes` and `createRouter`:
+
+  ```tsx
+  export const routes = defineRoutes([
+    defineRoute({ path: "/", component: Overview }),
+    defineRoute({ path: "/realtime", component: Realtime }),
+  ]);
+  export const Router = createRouter({ routes });
+  ```
+- **Typed Paths**: Use `Router.paths.realtime()` for compile-time verified URL generation.
+- **Reactive Hooks**: Leverage `useLocation()`, `useNavigate()`, and `useMatch()` for route tracking.
+
+### 3. Layout & Styling: Paved Path Design Rails
 
 - **Container-First Layout**: Sibling spacing MUST be handled by framework containers (`<Container>`, `<VStack>`, `<HStack>`, `<Grid>`) using `gap`.
 - **Layout Alignment**: While sibling push-margins are banned, layout alignment margins (`m="auto"`, `ml="auto"`) are permitted for flex positioning.
@@ -39,13 +54,13 @@ A high-performance, type-safe, zero-tech-debt starter framework engineered for t
 - **Native Slot Recipes**: Components bind cleanly to Panda CSS 2.4 slot recipes (`card`, `dialog`, `button`, `badge`, `text`) without redundant duplicate inline overrides.
 - **Strict Tokens**: Compiler enforces `strictTokens: true` and `strictPropertyValues: true`. No magic pixel values or random hex colors.
 
-### 3. Headless UI (Ark UI + Zag.js)
+### 4. Headless UI (Ark UI + Zag.js)
 
 - **Autonomous Modal Lifecycle**: Modals operate headlessly via Zag.js state machines. `<Dialog.Portal>` internally binds to `useDialogContext()` and `<Show when={dialog().open}>`, guaranteeing 100% clean physical DOM teardown on ESC or dismissal with zero ghost overlays and zero signal boilerplate.
 - **No Boolean `asChild`**: Ark UI Solid components are already polymorphic elements. Style them with typesafe variants: `<Dialog.Trigger variant="outline">` or use `<Button>`.
 - **DOM Utilities**: Import `<Portal>` from `@solidjs/web`, not `solid-js`.
 
-### 4. Data Layer: Schema as Single Source of Truth (SSOT)
+### 5. Data Layer: Schema as Single Source of Truth (SSOT)
 
 - **Ban Arbitrary API Types**: NEVER handcraft loose, arbitrary `interface Record { ... }` or `type ApiPayload = { ... }` in component or service files.
 - **Schema as Single Source of Truth**: All database tables, reducers, and RPC contracts MUST be formally defined in `src/schema/` (or generated from `spacetime generate` / `buf generate`).
@@ -65,15 +80,17 @@ A high-performance, type-safe, zero-tech-debt starter framework engineered for t
 ├── biome.json            # Biome 2.6 formatting & import organization rules
 ├── docs/
 │   └── ai/               # Machine-readable documentation (llms.txt index)
-├── index.html            # Standard SPA HTML entry point
 ├── oxlint.config.ts      # Oxlint configuration with Solid 2.0 linting plugin
 ├── package.json          # Modern dependency declarations & scripts
 ├── panda.config.ts       # Panda CSS 2.4 tokens, semantic tokens, and slot recipes
 ├── patches/              # Upstream compatibility patch (Ark UI 5.x <-> Solid 2.0 bridge)
 ├── src/
-│   ├── App.tsx           # Canonical foundation starter application
-│   ├── index.tsx         # Clean client mount entry (render -> #root)
+│   ├── Document.tsx      # Official Solid 2.0 Document HTML Shell
+│   ├── App.tsx           # Canonical foundation starter application (Router + Layout)
 │   ├── index.css         # Panda CSS cascade layer imports
+│   ├── routes/           # Declarative page views
+│   │   ├── overview.tsx  # Reactivity counter & Ark UI modal dialog primitives
+│   │   └── realtime.tsx  # SpacetimeDB engine & ConnectRPC telemetry views
 │   ├── components/
 │   │   └── ui/           # Paved Path UI Primitives (Button, Badge, Card, Dialog, Layout, Typography, Tokens)
 │   ├── lib/
@@ -106,7 +123,7 @@ bun install
 ```bash
 bun run dev
 ```
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Solid Reactivity Diagnostics dev server is available at [http://localhost:3000/__solid/diagnostics](http://localhost:3000/__solid/diagnostics).
 
 ### Code Quality & Verification
 
@@ -134,5 +151,6 @@ To allow headless UI component libraries powered by Zag.js (`@ark-ui/solid`) to 
 - Restores shim interfaces for `splitProps`, `mergeProps`, and `onMount`.
 - Adds `provider.Provider = provider` for React/Solid 1.x style context providers.
 - Sets `ownedWrite: true` for internal Zag.js signal updates.
+- Preserves native observe/dev diagnostic branches cleanly without polluting global namespaces.
 
 This ensures you can build with full Solid 2.0 reactivity today while maintaining 100% accessible Ark UI primitives.

@@ -10,7 +10,7 @@ export interface BadgeProps extends ComponentProps<"span"> {
 
 /**
  * Badge Primitive
- * Encapsulates the Park UI badge recipe with Solid 2.0 fine-grained reactivity.
+ * Encapsulates the Panda CSS badge recipe with Solid 2.0 fine-grained reactivity.
  * Strictly bounded by design tokens.
  */
 export const Badge: ParentComponent<BadgeProps> = (props) => {

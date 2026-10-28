@@ -10,7 +10,7 @@ export interface ButtonProps extends ComponentProps<"button"> {
 
 /**
  * Button Primitive
- * Encapsulates the Park UI button recipe with Solid 2.0 fine-grained reactivity.
+ * Encapsulates the Panda CSS button recipe with Solid 2.0 fine-grained reactivity.
  * Automatically defaults type to "button" to prevent unwanted form submit triggers.
  * Strictly bounded by design tokens.
  */

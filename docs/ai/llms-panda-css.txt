@@ -1,4 +1,4 @@
-# Panda CSS & Park UI Design System Guide (Paved Path Edition)
+# Panda CSS 2.4 Design System Guide (Paved Path Edition)
 
 ## Philosophy: 鋪鐵軌而非設陷阱 (Lay the Rails, Don't Set Traps)
 UI layouts should be scientific, rational, and bounded by a closed-world design token system.

@@ -1,13 +1,13 @@
 ---
 
 name: ark-ui-solid
-description: Guide for building accessible UI components with Ark UI Solid (@ark-ui/solid) and Park UI in Solid.js 2.0. Read when building or refactoring UI components, dialogs, menus, selects, or forms.
+description: Guide for building accessible UI components with Ark UI Solid (@ark-ui/solid) and Panda CSS 2.4 slot recipes in Solid.js 2.0. Read when building or refactoring UI components, dialogs, menus, selects, or forms.
 ---
 
-# Ark UI Solid & Park UI Best Practices
+# Ark UI Solid & Panda CSS 2.4 Best Practices
 
 Ark UI provides headless, accessible component primitives powered by Zag.js state machines.
-Park UI pairs Ark UI with Panda CSS design tokens and slot recipes.
+This starter pairs Ark UI with native Panda CSS 2.4 design tokens and slot recipes defined in `panda.config.ts`.
 
 ## 1. Golden Rules for Ark UI Solid
 
@@ -16,16 +16,25 @@ Park UI pairs Ark UI with Panda CSS design tokens and slot recipes.
 In this framework, `<Dialog.Portal>` internally binds to Ark UI's `useDialogContext()` and `<Show when={dialog().open}>`:
 ```tsx
 <Dialog.Root lazyMount unmountOnExit>
-  <Dialog.Trigger class={button({ variant: "outline" })}>Open Dialog</Dialog.Trigger>
+  <Dialog.Trigger variant="outline">Open Dialog</Dialog.Trigger>
   <Dialog.Portal>
-    <Dialog.Backdrop class={classes.backdrop} />
-    <Dialog.Positioner class={classes.positioner}>
-      <Dialog.Content class={classes.content}>
+    <Dialog.Backdrop />
+    <Dialog.Positioner>
+      <Dialog.Content>
         <Dialog.CloseTrigger />
         <Dialog.Header>
           <Dialog.Title>Dialog Header</Dialog.Title>
+          <Dialog.Description>Dialog subtitle context</Dialog.Description>
         </Dialog.Header>
         <Dialog.Body>Dialog Content Details</Dialog.Body>
+        <Dialog.Footer>
+          <Dialog.CloseTrigger variant="outline" size="sm">
+            Cancel
+          </Dialog.CloseTrigger>
+          <Dialog.CloseTrigger variant="solid" size="sm">
+            Confirm
+          </Dialog.CloseTrigger>
+        </Dialog.Footer>
       </Dialog.Content>
     </Dialog.Positioner>
   </Dialog.Portal>
@@ -88,35 +97,35 @@ const [open, setOpen] = createSignal(false);
 </Dialog.Root>;
 ```
 
-## 2. Park UI Slot Recipe Anatomy
+## 2. Panda CSS 2.4 Slot Recipe Anatomy
 
-Park UI generates slot recipes for complex components in `styled-system/recipes`.
-For example, a complete dialog:
+Panda CSS 2.4 slot recipes generate typed slot classnames in `styled-system/recipes`.
+For example, our pre-composed dialog primitive uses `dialog()` slot recipe:
 ```tsx
-import { Dialog } from "@ark-ui/solid/dialog";
+import { Dialog as ArkDialog } from "@ark-ui/solid/dialog";
 import { Portal } from "@solidjs/web";
 import { dialog, button } from "styled-system/recipes";
 
 export function CustomDialog() {
-  const classes = dialog();
+  const styles = dialog();
 
   return (
-    <Dialog.Root>
-      <Dialog.Trigger class={button({ variant: "outline" })}>Open Dialog</Dialog.Trigger>
+    <ArkDialog.Root>
+      <ArkDialog.Trigger class={button({ variant: "outline" })}>Open Dialog</ArkDialog.Trigger>
 
       <Portal>
-        <Dialog.Backdrop class={classes.backdrop} />
-        <Dialog.Positioner class={classes.positioner}>
-          <Dialog.Content class={classes.content}>
-            <Dialog.Title class={classes.title}>Dialog Title</Dialog.Title>
-            <Dialog.Description class={classes.description}>
+        <ArkDialog.Backdrop class={styles.backdrop} />
+        <ArkDialog.Positioner class={styles.positioner}>
+          <ArkDialog.Content class={styles.content}>
+            <ArkDialog.Title class={styles.title}>Dialog Title</ArkDialog.Title>
+            <ArkDialog.Description class={styles.description}>
               Dialog body content goes here.
-            </Dialog.Description>
-            <Dialog.CloseTrigger class={button({ variant: "solid" })}>Close</Dialog.CloseTrigger>
-          </Dialog.Content>
-        </Dialog.Positioner>
+            </ArkDialog.Description>
+            <ArkDialog.CloseTrigger class={styles.closeTrigger}>Close</ArkDialog.CloseTrigger>
+          </ArkDialog.Content>
+        </ArkDialog.Positioner>
       </Portal>
-    </Dialog.Root>
+    </ArkDialog.Root>
   );
 }
 ```

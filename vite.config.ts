@@ -11,17 +11,6 @@ export default defineConfig({
       // Default is client-rendered SPA onto a prerendered static document shell.
       // Set `ssr: true` to enable streaming server-side rendering with zero config changes.
       ssr: false,
-      /**
-       * In dev mode, Solid 2.0 enables strict Reactivity Diagnostics by default.
-       * Third-party component libraries written for Solid 1.x (such as Ark UI / Zag.js)
-       * evaluate props during initial component setup, emitting [STRICT_READ_UNTRACKED]
-       * notices in the dev console.
-       *
-       * Setting `dev: false` serves the optimized production build under `vite dev`,
-       * providing a 100% clean, silent console while preserving instant Vite HMR.
-       * Set `dev: true` (or omit) when actively debugging reactive graph issues in application code.
-       */
-      dev: false,
     }),
   ],
   resolve: {

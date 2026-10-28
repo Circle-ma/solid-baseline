@@ -65,7 +65,7 @@ index a8f6cf704514d34da5f589a5de224685589d111a..ef326e56093c01738390ba2ac431041a
 +function mergeProps(...sources) { return merge(...sources); }
 +export { onMount, splitProps, compatOn as on, compatEffect as createEffect, mergeProps };
 diff --git a/dist/server.js b/dist/server.js
-index 306cf2909918be709616ef63b61ac54d7271ed50..762341fe79e632fb489de4ad2d386876d1ad43e8 100644
+index 306cf2909918be709616ef63b61ac54d7271ed50..1d33c860c92c060cddf1dccffff38a9e98d5ac64 100644
 --- a/dist/server.js
 +++ b/dist/server.js
 @@ -2258,6 +2258,7 @@ function createContext(defaultValue, options) {
@@ -76,12 +76,8 @@ index 306cf2909918be709616ef63b61ac54d7271ed50..762341fe79e632fb489de4ad2d386876
    return provider;
  }
  function useContext(context) {
-@@ -3552,7 +3553,46 @@ function forwardIteratorReturn(it, value) {
-     value
-   });
- }
--const OBSERVE = undefined;
-+const OBSERVE = {};
+@@ -3555,4 +3556,43 @@ function forwardIteratorReturn(it, value) {
+ const OBSERVE = undefined;
  const DEV = undefined;
  
 -export { $DEVCOMP, DEV, Errored, For, Hydration, Loading, Match, NoHydration, OBSERVE, ROOT_ERROR_HOOK, Repeat, Reveal, Show, Switch, UNASKED, action, adoptedAnswerStream, affects, applyPatches, beginEdgesRender, children, configureClientErrors, createComponent, createContext, createDeepProxy, createDeferred, createEffect, createErrorBoundary, createLoadingBoundary, createMemo, createOptimistic, createOptimisticStore, createOwner, createProjection, createReaction, createRenderEffect, createRevealOrder, createRoot, createSignal, createStore, createTrackedEffect, createUniqueId, creationStamp, deep, dynamicComponent, dynamicCore, enableHydration, enableServerComponentHydration, flush, forwardIteratorReturn, from, getNextChildId, getObserver, getOwner, getProjectionTrace, hasLoadingWindow, inLiveServerComponentScope, inServerComponentScope, isAsyncIterable, isDisposed, isHydratable, isHydrating, isPending, latest, lazy, lazyModule, mapArray, markTopLevelSnapshotScope, merge, noHydrationId, onCleanup, onFlush, onHydrationEnd, onSettled, readHydratedValue, readSerializedOrCompute, reconcile, refresh, repeat, reportServerError, resetErrorHalt, resolve, runInServerComponentScope, runWithOwner, setReadWatch, setSignalIdentities, setWriteHook, shareAsyncIterable, sharedConfig, signalName, ssrHandleError, ssrSanitizeError, ssrScope, storeName, subFetch, syncThenable, trackFillReads, until, untrack, useContext, withHydrationGate, wrapFirstYield };

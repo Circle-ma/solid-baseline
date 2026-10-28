@@ -20,10 +20,10 @@
     "@pandacss/preset-panda": "^2.4.0",
     "@pandacss/vite": "^2.4.0",
     "@solidjs/diagnostics": "^2.0.0-rc.19",
-    "@solidjs/vite-plugin": "^3.0.0-next.51",
-    "@types/node": "^26.6.5",
+    "@solidjs/vite-plugin": "3.0.0-next.52",
+    "@types/node": "^26.6.6",
     "eslint-plugin-solid": "~0.18.1",
-    "oxlint": "~1.79.0",
+    "oxlint": "^1.90.0",
     "typescript": "^5.9.3",
     "vite": "^8.3.5"
   },
@@ -32,7 +32,7 @@
     "@bufbuild/protobuf": "^2.16.0",
     "@connectrpc/connect": "^2.3.0",
     "@connectrpc/connect-web": "^2.3.0",
-    "@solidjs/router": "^1.0.0",
+    "@solidjs/router": "2.0.0-next.43",
     "@solidjs/web": "^2.0.0-rc.19",
     "solid-js": "^2.0.0-rc.19",
     "spacetimedb": "^2.13.0"

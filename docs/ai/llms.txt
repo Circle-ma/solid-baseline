@@ -27,7 +27,7 @@
    - All database, reducer, and API types derive from `src/schema/`.
 
 ## Deep-Dive Knowledge Links
-- [Panda CSS & Park UI Design System Guide](docs/ai/llms-panda-css.txt)
+- [Panda CSS 2.4 Design System Guide](docs/ai/llms-panda-css.txt)
 - [Ark UI Headless Components & State Machine Guide](docs/ai/llms-ark-ui.txt)
 - [Solid.js 2.0 Core Guide](docs/ai/llms-solid-2.0.txt)
 - [SpacetimeDB Realtime Guide](docs/ai/llms-spacetimedb.txt)
