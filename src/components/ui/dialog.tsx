@@ -3,7 +3,7 @@ import { Portal as SolidPortal } from "@solidjs/web";
 import type { ComponentProps, ParentComponent } from "solid-js";
 import { omit, Show } from "solid-js";
 import { css, cx } from "styled-system/css";
-import { dialog } from "styled-system/recipes";
+import { type ButtonVariant, button, dialog } from "styled-system/recipes";
 
 /**
  * Root Dialog Component
@@ -11,10 +11,31 @@ import { dialog } from "styled-system/recipes";
  */
 export const DialogRoot = ArkDialog.Root;
 
+export interface DialogTriggerProps extends ComponentProps<typeof ArkDialog.Trigger> {
+  variant?: ButtonVariant["variant"];
+  size?: ButtonVariant["size"];
+}
+
 /**
  * Dialog Trigger Primitive
+ * Polymorphic trigger supporting direct variant/size styling or asChild render props.
  */
-export const DialogTrigger = ArkDialog.Trigger;
+export const DialogTrigger: ParentComponent<DialogTriggerProps> = (props) => {
+  const rest = omit(props, "variant", "size", "class", "children");
+  return (
+    <ArkDialog.Trigger
+      {...rest}
+      class={cx(
+        props.variant || props.size
+          ? button({ variant: props.variant, size: props.size })
+          : undefined,
+        props.class as string,
+      )}
+    >
+      {props.children}
+    </ArkDialog.Trigger>
+  );
+};
 
 /**
  * Backdrop overlay with blur and subtle theme tint.
@@ -114,24 +135,30 @@ export const DialogContent: ParentComponent<ComponentProps<typeof ArkDialog.Cont
   );
 };
 
+export interface DialogCloseTriggerProps extends ComponentProps<typeof ArkDialog.CloseTrigger> {
+  variant?: ButtonVariant["variant"];
+  size?: ButtonVariant["size"];
+}
+
 /**
  * Close Trigger Primitive
  * Dual-mode:
- * 1. Default (no children): Renders an accessible, absolute-positioned top-right 'X' icon button.
- * 2. Custom (with children): Renders the provided trigger content (e.g. Cancel button in footer).
+ * 1. Default (no children/variant): Renders an accessible, absolute-positioned top-right 'X' icon button.
+ * 2. Custom (with children or variant): Renders a styled button (e.g. Cancel button in footer).
  */
-export const DialogCloseTrigger: ParentComponent<ComponentProps<typeof ArkDialog.CloseTrigger>> = (
-  props,
-) => {
-  const rest = omit(props, "class", "children");
+export const DialogCloseTrigger: ParentComponent<DialogCloseTriggerProps> = (props) => {
+  const rest = omit(props, "variant", "size", "class", "children");
   const styles = dialog();
+  const isCustom = () => Boolean(props.variant || props.size || props.children || props.asChild);
 
   return (
     <ArkDialog.CloseTrigger
       {...rest}
       class={cx(
-        styles.closeTrigger,
-        props.children
+        props.variant || props.size
+          ? button({ variant: props.variant, size: props.size })
+          : styles.closeTrigger,
+        isCustom()
           ? undefined
           : css({
               position: "absolute",
@@ -161,21 +188,23 @@ export const DialogCloseTrigger: ParentComponent<ComponentProps<typeof ArkDialog
         props.class as string,
       )}
     >
-      {props.children ?? (
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 15 15"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M11.78 3.22a.75.75 0 0 0-1.06 0L7.5 6.44 4.28 3.22a.75.75 0 0 0-1.06 1.06L6.44 7.5l-3.22 3.22a.75.75 0 1 0 1.06 1.06L7.5 8.56l3.22 3.22a.75.75 0 0 0 1.06-1.06L8.56 7.5l3.22-3.22a.75.75 0 0 0 0-1.06Z" />
-        </svg>
-      )}
+      {props.asChild
+        ? undefined
+        : (props.children ?? (
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 15 15"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M11.78 3.22a.75.75 0 0 0-1.06 0L7.5 6.44 4.28 3.22a.75.75 0 0 0-1.06 1.06L8.56 7.5l3.22-3.22a.75.75 0 0 0 0-1.06Z" />
+            </svg>
+          ))}
     </ArkDialog.CloseTrigger>
   );
 };

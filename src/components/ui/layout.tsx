@@ -117,6 +117,9 @@ export interface VStackProps extends ComponentProps<"div"> {
   borderColor?: ColorToken;
   borderRadius?: RadiusToken;
   p?: SpacingToken;
+  px?: SpacingToken;
+  py?: SpacingToken;
+  bg?: ColorToken;
   w?: SizeToken | "full" | "auto";
 }
 
@@ -133,6 +136,9 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
     "borderColor",
     "borderRadius",
     "p",
+    "px",
+    "py",
+    "bg",
     "w",
     "class",
     "children",
@@ -154,6 +160,9 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
           borderColor: props.borderColor as any,
           borderRadius: props.borderRadius as any,
           p: props.p as any,
+          px: props.px as any,
+          py: props.py as any,
+          bg: props.bg as any,
           w: props.w as any,
         }),
         props.class as string,
@@ -175,6 +184,8 @@ export interface HStackProps extends ComponentProps<"div"> {
   alignItems?: "stretch" | "center" | "flex-start" | "flex-end" | "baseline";
   justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around";
   p?: SpacingToken;
+  px?: SpacingToken;
+  py?: SpacingToken;
   bg?: ColorToken;
   borderRadius?: RadiusToken;
   borderWidth?: "1px";
@@ -190,6 +201,8 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
     "alignItems",
     "justifyContent",
     "p",
+    "px",
+    "py",
     "bg",
     "borderRadius",
     "borderWidth",
@@ -210,6 +223,8 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
         }),
         css({
           p: props.p as any,
+          px: props.px as any,
+          py: props.py as any,
           bg: props.bg as any,
           borderRadius: props.borderRadius as any,
           borderWidth: props.borderWidth as any,

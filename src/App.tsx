@@ -1,7 +1,8 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
-import { badge, button } from "styled-system/recipes";
 import {
+  Badge,
   Box,
+  Button,
   Card,
   Code,
   Container,
@@ -37,7 +38,7 @@ export default function App() {
               <Heading as="h1" size="2xl" letterSpacing="tight">
                 Solid 2.0 Foundation Architecture
               </Heading>
-              <span class={badge({ variant: "subtle" })}>2026 Core</span>
+              <Badge variant="subtle">2026 Core</Badge>
             </HStack>
             <Text size="sm" color="fg.muted" lineHeight="relaxed">
               Universal fullstack template powered by Bun, Vite (Rolldown), Solid 2.0, Ark UI, Panda
@@ -85,27 +86,15 @@ export default function App() {
                   </HStack>
 
                   <HStack gap="2">
-                    <button
-                      type="button"
-                      class={button({ variant: "outline", size: "sm" })}
-                      onClick={() => setCount((c) => c - 1)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => setCount((c) => c - 1)}>
                       - Decrement
-                    </button>
-                    <button
-                      type="button"
-                      class={button({ variant: "solid", size: "sm" })}
-                      onClick={() => setCount((c) => c + 1)}
-                    >
+                    </Button>
+                    <Button variant="solid" size="sm" onClick={() => setCount((c) => c + 1)}>
                       + Increment
-                    </button>
-                    <button
-                      type="button"
-                      class={button({ variant: "ghost", size: "sm" })}
-                      onClick={() => setCount(0)}
-                    >
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setCount(0)}>
                       Reset
-                    </button>
+                    </Button>
                   </HStack>
                 </VStack>
               </Card.Body>
@@ -127,9 +116,7 @@ export default function App() {
                   </Text>
 
                   <Dialog.Root lazyMount unmountOnExit>
-                    <Dialog.Trigger class={button({ variant: "outline" })}>
-                      Open Accessible Dialog
-                    </Dialog.Trigger>
+                    <Dialog.Trigger variant="outline">Open Accessible Dialog</Dialog.Trigger>
 
                     <Dialog.Portal>
                       <Dialog.Backdrop />
@@ -155,10 +142,10 @@ export default function App() {
                           </Dialog.Body>
 
                           <Dialog.Footer>
-                            <Dialog.CloseTrigger class={button({ variant: "outline", size: "sm" })}>
+                            <Dialog.CloseTrigger variant="outline" size="sm">
                               Cancel
                             </Dialog.CloseTrigger>
-                            <Dialog.CloseTrigger class={button({ variant: "solid", size: "sm" })}>
+                            <Dialog.CloseTrigger variant="solid" size="sm">
                               Confirm & Close
                             </Dialog.CloseTrigger>
                           </Dialog.Footer>
@@ -182,10 +169,10 @@ export default function App() {
                   </Card.Description>
                 </VStack>
                 <HStack gap="2" alignItems="center">
-                  <span class={badge({ variant: isConnected() ? "solid" : "subtle" })}>
+                  <Badge variant={isConnected() ? "solid" : "subtle"}>
                     {connectionMode() === "live" ? "Live WebSocket" : "Reactive Local Cache"}
-                  </span>
-                  <span class={badge({ variant: "outline" })}>{clientIdentity()}</span>
+                  </Badge>
+                  <Badge variant="outline">{clientIdentity()}</Badge>
                 </HStack>
               </HStack>
             </Card.Header>
@@ -216,9 +203,9 @@ export default function App() {
                       </Text>
                     </Show>
                   </HStack>
-                  <button
-                    type="button"
-                    class={button({ variant: "solid", size: "sm" })}
+                  <Button
+                    variant="solid"
+                    size="sm"
                     onClick={() =>
                       callReducer({
                         action: "TX_EVENT",
@@ -227,7 +214,7 @@ export default function App() {
                     }
                   >
                     ⚡ Dispatch Reducer
-                  </button>
+                  </Button>
                 </HStack>
 
                 {/* Table Feed */}
@@ -255,9 +242,9 @@ export default function App() {
                         borderColor="border.subtle"
                       >
                         <HStack gap="2" alignItems="center">
-                          <span class={badge({ variant: "outline", size: "sm" })}>
+                          <Badge variant="outline" size="sm">
                             {record.action}
-                          </span>
+                          </Badge>
                           <Text size="xs" fontWeight="medium" color="fg.default">
                             {record.payload}
                           </Text>
