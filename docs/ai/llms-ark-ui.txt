@@ -1,0 +1,63 @@
+# Ark UI for Solid (@ark-ui/solid)
+
+## Philosophy
+Ark UI provides headless, accessible component primitives powered by Zag.js state machines.
+It handles state, ARIA attributes, keyboard navigation, and focus management without applying any CSS classes.
+
+## Official Endpoints
+- Index: https://ark-ui.com/llms.txt
+- Solid-specific: https://ark-ui.com/llms-solid.txt
+- MCP Server: `@ark-ui/mcp` (run via `bunx @ark-ui/mcp`)
+
+## Solid Syntax Pattern
+All Ark UI Solid components follow a compound component structure using dot-notation:
+
+```tsx
+import { Dialog } from '@ark-ui/solid/dialog'
+import { Portal } from '@solidjs/web'
+import { createSignal, Show } from 'solid-js'
+import { button, dialog } from 'styled-system/recipes'
+
+export function CustomDialog() {
+  const [open, setOpen] = createSignal(false);
+  const classes = dialog();
+
+  return (
+    <Dialog.Root open={open()} onOpenChange={(e) => setOpen(e.open)} lazyMount unmountOnExit>
+      <Dialog.Trigger class={button({ variant: "outline" })}>
+        Open Dialog
+      </Dialog.Trigger>
+      <Show when={open()}>
+        <Portal>
+          <Dialog.Backdrop class={classes.backdrop} />
+          <Dialog.Positioner class={classes.positioner}>
+            <Dialog.Content class={classes.content}>
+              <Dialog.Title class={classes.title}>Dialog Header</Dialog.Title>
+              <Dialog.Description class={classes.description}>Dialog Content Details</Dialog.Description>
+              <Dialog.CloseTrigger class={button({ variant: "solid" })}>
+                Close
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Show>
+    </Dialog.Root>
+  )
+}
+```
+
+## Critical Rules for Ark UI Solid
+1. **Encapsulated Portal Lifecycle (`<Dialog.Portal>`)**:
+   - In our design system, `<Dialog.Portal>` internally binds to Ark UI's `useDialogContext()` and `<Show when={dialog().open}>`.
+   - Modals operate completely autonomously without requiring manual `const [isOpen, setIsOpen]` signal boilerplate.
+   - Solid immediately tears down backdrops and positioners upon ESC key or dismiss events, preventing ghost overlays from trapping focus or clicks.
+2. **Never use `asChild` as a boolean**:
+   - `Dialog.Trigger` and `Dialog.CloseTrigger` are already `<ark.button>` elements.
+   - WRONG (React style): `<Dialog.Trigger asChild><button>Open</button></Dialog.Trigger>` -> Throws `TypeError: localProps.asChild is not a function`.
+   - RIGHT: `<Dialog.Trigger class={button({ variant: 'outline' })}>Open</Dialog.Trigger>`.
+3. **Import `<Portal>` from `@solidjs/web`**:
+   - In Solid 2.0, DOM components belong to `@solidjs/web`.
+```
+
+## Available Primitives
+Accordion, Avatar, Carousel, Checkbox, ColorPicker, Combobox, DatePicker, Dialog, Editable, FileUpload, HoverCard, Menu, NumberInput, Pagination, PinInput, Popover, Progress, RadioGroup, RatingGroup, SegmentGroup, Select, Slider, Splitter, Steps, Switch, Tabs, TagsInput, Toast, ToggleGroup, Tooltip, TreeView.
