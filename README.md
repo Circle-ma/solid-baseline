@@ -42,7 +42,7 @@ A high-performance, type-safe, zero-tech-debt starter framework engineered for t
 ### 3. Headless UI (Ark UI + Park UI)
 
 - **Autonomous Modal Lifecycle**: Modals operate headlessly via Zag.js state machines. `<Dialog.Portal>` internally encapsulates `<Show when={dialog().open}>` and `<SolidPortal>`, guaranteeing 100% clean physical DOM teardown on ESC or dismissal with zero ghost overlays and zero signal boilerplate.
-- **No Boolean `asChild`**: Ark UI Solid components (`Dialog.Trigger`, etc.) are already polymorphic `<ark.button>` elements. Style them directly: `<Dialog.Trigger class={button({ variant: "outline" })}>`.
+- **No Boolean `asChild`**: Ark UI Solid components (`Dialog.Trigger`, etc.) are already polymorphic `<ark.button>` elements. Style them with typesafe variants: `<Dialog.Trigger variant="outline">` or use `<Button>`.
 - **DOM Utilities**: Import `<Portal>` from `@solidjs/web`, not `solid-js`.
 
 ### 4. Data Layer: Schema 為單一真理來源 (Schema as SSOT)
@@ -76,8 +76,15 @@ A high-performance, type-safe, zero-tech-debt starter framework engineered for t
 │   ├── Document.tsx      # Zero-client-JS HTML shell & head manager
 │   ├── index.css         # Panda CSS cascade layer imports
 │   ├── components/
-│   │   └── ui/
-│   │       └── typography.tsx # SSOT Typography Primitives (Heading, Text, Code)
+│   │   └── ui/           # Paved Path UI Primitives (Button, Badge, Card, Dialog, Layout, Typography, Tokens)
+│   │       ├── badge.tsx
+│   │       ├── button.tsx
+│   │       ├── card.tsx
+│   │       ├── dialog.tsx
+│   │       ├── index.ts
+│   │       ├── layout.tsx
+│   │       ├── tokens.ts
+│   │       └── typography.tsx
 │   ├── lib/
 │   │   ├── connect.ts    # ConnectRPC type-safe client setup
 │   │   └── spacetime.ts  # SpacetimeDB reactive signal bridge

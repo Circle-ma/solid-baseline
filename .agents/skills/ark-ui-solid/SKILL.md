@@ -44,12 +44,10 @@ In React / Radix libraries, `asChild` is commonly used as a boolean flag:
 ```
 
 In **Ark UI Solid**, Ark components are already polymorphic DOM elements (`ark.button`, `ark.div`, etc.).
-Style them directly with Panda CSS or Park UI recipes:
+In our framework, style triggers typesafely with encapsulated variants or `<Button>`:
 ```tsx
-// ✅ RIGHT: Direct styling on Ark UI primitives
-import { button } from "styled-system/recipes";
-
-<Dialog.Trigger class={button({ variant: "outline" })}>Open Dialog</Dialog.Trigger>;
+// ✅ RIGHT: Direct typesafe variants on framework primitives
+<Dialog.Trigger variant="outline">Open Dialog</Dialog.Trigger>;
 ```
 
 If you truly need custom rendering, `asChild` in Solid expects a **Render Prop function**:
@@ -57,27 +55,27 @@ If you truly need custom rendering, `asChild` in Solid expects a **Render Prop f
 // ✅ RIGHT (if using asChild, pass a function)
 <Dialog.Trigger
   asChild={(props) => (
-    <button {...props()} class={button({ variant: "outline" })}>
+    <Button variant="outline" {...props()}>
       Custom Button
-    </button>
+    </Button>
   )}
 />;
 ```
 
-### Rule 2: Import `<Portal>` from `@solidjs/web`
+### Rule 3: Import `<Portal>` from `@solidjs/web`
 
 In Solid 2.0, DOM utilities and `<Portal>` reside in `@solidjs/web`:
 ```tsx
 import { Portal } from "@solidjs/web";
 ```
 
-### Rule 3: Use Controlled and Uncontrolled Modals Idiomatically
+### Rule 4: Use Controlled and Uncontrolled Modals Idiomatically
 
 Ark UI components are self-managing by default via Zag.js state machines.
 ```tsx
 // Uncontrolled (recommended when external state sync is not required):
 <Dialog.Root defaultOpen={false}>
-  <Dialog.Trigger class={button({ variant: "solid" })}>Open</Dialog.Trigger>
+  <Dialog.Trigger variant="solid">Open</Dialog.Trigger>
   ...
 </Dialog.Root>;
 
@@ -85,7 +83,7 @@ Ark UI components are self-managing by default via Zag.js state machines.
 const [open, setOpen] = createSignal(false);
 
 <Dialog.Root open={open()} onOpenChange={(e) => setOpen(e.open)}>
-  <Dialog.Trigger class={button({ variant: "solid" })}>Open</Dialog.Trigger>
+  <Dialog.Trigger variant="solid">Open</Dialog.Trigger>
   ...
 </Dialog.Root>;
 ```

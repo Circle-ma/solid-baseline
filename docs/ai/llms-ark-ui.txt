@@ -54,10 +54,9 @@ export function CustomDialog() {
 2. **Never use `asChild` as a boolean**:
    - `Dialog.Trigger` and `Dialog.CloseTrigger` are already `<ark.button>` elements.
    - WRONG (React style): `<Dialog.Trigger asChild><button>Open</button></Dialog.Trigger>` -> Throws `TypeError: localProps.asChild is not a function`.
-   - RIGHT: `<Dialog.Trigger class={button({ variant: 'outline' })}>Open</Dialog.Trigger>`.
+   - RIGHT: `<Dialog.Trigger variant="outline">Open</Dialog.Trigger>` or `<Dialog.Trigger asChild={(props) => <Button variant="outline" {...props()}>Open</Button>} />`.
 3. **Import `<Portal>` from `@solidjs/web`**:
    - In Solid 2.0, DOM components belong to `@solidjs/web`.
-```
 
 ## Available Primitives
 Accordion, Avatar, Carousel, Checkbox, ColorPicker, Combobox, DatePicker, Dialog, Editable, FileUpload, HoverCard, Menu, NumberInput, Pagination, PinInput, Popover, Progress, RadioGroup, RatingGroup, SegmentGroup, Select, Slider, Splitter, Steps, Switch, Tabs, TagsInput, Toast, ToggleGroup, Tooltip, TreeView.

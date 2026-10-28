@@ -33,14 +33,17 @@ All visual properties must resolve to tokens exported from `~/components/ui/toke
 
 ---
 
-## 3. Layout Rails: Containers & Compounds
+## 3. Layout & UI Rails: Containers & Compounds
 
-Never write raw layout styling. Use pre-composed primitives from `~/components/ui`:
-- `<Container maxW="860px">`: Centered responsive container.
-- `<VStack gap="4">`: Vertical column stack.
-- `<HStack gap="3">`: Horizontal row stack.
-- `<Grid columns={2} gap="6">`: Responsive grid.
+Never write raw layout styling or raw unstyled HTML elements. Use pre-composed primitives from `~/components/ui`:
+- `<Container maxW="4xl">`: Centered responsive container bounded by token scale.
+- `<VStack gap="4">`: Vertical column stack (supports `minH`, `maxH`, `w`, `p`, `px`, `py`, `bg`).
+- `<HStack gap="3">`: Horizontal row stack (supports `minH`, `maxH`, `w`, `p`, `px`, `py`, `bg`).
+- `<Grid columns={2} gap="6">`: Responsive grid layout.
 - `<Divider />`: Visual section separator.
+- `<Button variant="solid" size="sm">`: Systematic button primitive.
+- `<Badge variant="subtle" size="sm">`: Semantic status badge primitive.
+- `<Heading>`, `<Text>`, `<Code>`: Strict typography primitives from `~/components/ui/typography`.
 - `<Card.Root>`: Encapsulated card surface with pre-configured 24px padding and elevation.
 - `<Dialog.Content>`: Encapsulated modal container with pre-configured 24px padding, 20px gap, max width, and top-right close trigger.
 

@@ -110,7 +110,12 @@ export interface VStackProps extends ComponentProps<"div"> {
   gap?: SpacingToken;
   alignItems?: "stretch" | "center" | "flex-start" | "flex-end" | "baseline";
   justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around";
+  minH?: SizeToken | "100vh" | "100dvh" | "screen" | "full";
   maxH?: SizeToken;
+  h?: SizeToken | "full" | "auto";
+  minW?: SizeToken | "full" | "auto";
+  maxW?: SizeToken;
+  w?: SizeToken | "full" | "auto";
   overflowY?: "auto" | "hidden" | "scroll" | "visible";
   borderWidth?: "1px";
   borderStyle?: "solid";
@@ -120,7 +125,7 @@ export interface VStackProps extends ComponentProps<"div"> {
   px?: SpacingToken;
   py?: SpacingToken;
   bg?: ColorToken;
-  w?: SizeToken | "full" | "auto";
+  color?: ColorToken;
 }
 
 export const VStack: ParentComponent<VStackProps> = (props) => {
@@ -129,7 +134,12 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
     "gap",
     "alignItems",
     "justifyContent",
+    "minH",
     "maxH",
+    "h",
+    "minW",
+    "maxW",
+    "w",
     "overflowY",
     "borderWidth",
     "borderStyle",
@@ -139,7 +149,7 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
     "px",
     "py",
     "bg",
-    "w",
+    "color",
     "class",
     "children",
   );
@@ -153,7 +163,12 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
           justify: props.justifyContent as any,
         }),
         css({
+          minH: props.minH as any,
           maxH: props.maxH as any,
+          h: props.h as any,
+          minW: props.minW as any,
+          maxW: props.maxW as any,
+          w: props.w as any,
           overflowY: props.overflowY as any,
           borderWidth: props.borderWidth as any,
           borderStyle: props.borderStyle as any,
@@ -163,7 +178,7 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
           px: props.px as any,
           py: props.py as any,
           bg: props.bg as any,
-          w: props.w as any,
+          color: props.color as any,
         }),
         props.class as string,
       )}
@@ -183,15 +198,22 @@ export interface HStackProps extends ComponentProps<"div"> {
   gap?: SpacingToken;
   alignItems?: "stretch" | "center" | "flex-start" | "flex-end" | "baseline";
   justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around";
+  minH?: SizeToken | "100vh" | "100dvh" | "screen" | "full";
+  maxH?: SizeToken;
+  h?: SizeToken | "full" | "auto";
+  minW?: SizeToken | "full" | "auto";
+  maxW?: SizeToken;
+  w?: SizeToken | "full" | "auto";
+  overflowX?: "auto" | "hidden" | "scroll" | "visible";
   p?: SpacingToken;
   px?: SpacingToken;
   py?: SpacingToken;
   bg?: ColorToken;
+  color?: ColorToken;
   borderRadius?: RadiusToken;
   borderWidth?: "1px";
   borderStyle?: "solid";
   borderColor?: ColorToken;
-  w?: SizeToken | "full" | "auto";
 }
 
 export const HStack: ParentComponent<HStackProps> = (props) => {
@@ -200,15 +222,22 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
     "gap",
     "alignItems",
     "justifyContent",
+    "minH",
+    "maxH",
+    "h",
+    "minW",
+    "maxW",
+    "w",
+    "overflowX",
     "p",
     "px",
     "py",
     "bg",
+    "color",
     "borderRadius",
     "borderWidth",
     "borderStyle",
     "borderColor",
-    "w",
     "class",
     "children",
   );
@@ -222,15 +251,22 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
           justify: props.justifyContent as any,
         }),
         css({
+          minH: props.minH as any,
+          maxH: props.maxH as any,
+          h: props.h as any,
+          minW: props.minW as any,
+          maxW: props.maxW as any,
+          w: props.w as any,
+          overflowX: props.overflowX as any,
           p: props.p as any,
           px: props.px as any,
           py: props.py as any,
           bg: props.bg as any,
+          color: props.color as any,
           borderRadius: props.borderRadius as any,
           borderWidth: props.borderWidth as any,
           borderStyle: props.borderStyle as any,
           borderColor: props.borderColor as any,
-          w: props.w as any,
         }),
         props.class as string,
       )}

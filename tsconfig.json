@@ -18,5 +18,5 @@
       "~/*": ["./src/*"]
     }
   },
-  "include": ["src", "styled-system", "panda.config.ts", "vite.config.ts"]
+  "include": ["src", "styled-system", "panda.config.ts", "vite.config.ts", "oxlint.config.ts"]
 }

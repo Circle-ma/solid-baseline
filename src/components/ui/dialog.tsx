@@ -337,15 +337,13 @@ export const DialogFooter: ParentComponent<ComponentProps<"div">> = (props) => {
 /**
  * Portal wrapper that safely cleans up DOM nodes when dialog is closed.
  */
-export interface DialogPortalProps {
-  children: any;
-}
+export type DialogPortalProps = ComponentProps<typeof SolidPortal>;
 
 export const DialogPortal: ParentComponent<DialogPortalProps> = (props) => {
   const dialog = useDialogContext();
   return (
     <Show when={dialog().open}>
-      <SolidPortal>{props.children}</SolidPortal>
+      <SolidPortal {...props}>{props.children}</SolidPortal>
     </Show>
   );
 };
