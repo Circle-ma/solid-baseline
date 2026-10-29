@@ -75,8 +75,8 @@ export default function App() {
             <VStack gap="8" alignItems="stretch">
               {/* Header */}
               <VStack gap="3" alignItems="stretch">
-                <HStack justifyContent="space-between" alignItems="center">
-                  <HStack gap="3" alignItems="center">
+                <HStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="4">
+                  <HStack gap="3" alignItems="center" flexWrap="wrap">
                     <Heading as="h1" size="2xl" letterSpacing="tight">
                       Solid 2.0 Baseline Architecture
                     </Heading>
@@ -98,7 +98,7 @@ export default function App() {
               <Divider borderColor="border.subtle" />
 
               {/* Footer */}
-              <HStack justifyContent="space-between" alignItems="center">
+              <HStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="3">
                 <Text size="xs" color="fg.muted">
                   Systematic UI Primitives · Solid Router 2.0 · Container Layout · Schema SSOT
                 </Text>

@@ -2,7 +2,7 @@ import type { ComponentProps, ParentComponent } from "solid-js";
 import { omit } from "solid-js";
 import { cx } from "styled-system/css";
 import { box, container, divider, grid, hstack, vstack } from "styled-system/patterns";
-import type { SystemProperties } from "styled-system/types/system";
+import type { ConditionalValue, SystemProperties } from "styled-system/types/system";
 import type { ColorToken } from "./tokens";
 
 export interface BoxProps extends Omit<ComponentProps<"div">, "style"> {
@@ -362,7 +362,7 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
 };
 
 export interface GridProps extends Omit<ComponentProps<"div">, "style"> {
-  columns?: number;
+  columns?: ConditionalValue<number>;
   gap?: SystemProperties["gap"];
   rowGap?: SystemProperties["rowGap"];
   columnGap?: SystemProperties["columnGap"];

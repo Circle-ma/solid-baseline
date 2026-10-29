@@ -7,7 +7,7 @@ export default function Overview() {
 
   return (
     <VStack gap="6" alignItems="stretch">
-      <Grid columns={2} gap="6">
+      <Grid columns={{ base: 1, md: 2 }} gap="6">
         {/* Card 1: Fine-Grained Reactivity */}
         <Card.Root>
           <Card.Header>
