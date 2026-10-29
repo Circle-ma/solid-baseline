@@ -64,7 +64,13 @@ export default function App() {
   return (
     <Router>
       {(props) => (
-        <Box minH="100vh" bg="bg.canvas" color="fg.default" p="12">
+        <Box
+          minH="100vh"
+          bg="bg.canvas"
+          color="fg.default"
+          py={{ base: "6", md: "12" }}
+          px={{ base: "4", sm: "6", md: "12" }}
+        >
           <Container maxW="4xl" p="0">
             <VStack gap="8" alignItems="stretch">
               {/* Header */}

@@ -7,13 +7,14 @@ import { type ButtonVariant, button, dialog } from "styled-system/recipes";
 
 export const DialogRoot = ArkDialog.Root;
 
-export interface DialogTriggerProps extends ComponentProps<typeof ArkDialog.Trigger> {
+export interface DialogTriggerProps
+  extends Omit<ComponentProps<typeof ArkDialog.Trigger>, "style"> {
   variant?: ButtonVariant["variant"];
   size?: ButtonVariant["size"];
 }
 
 export const DialogTrigger: ParentComponent<DialogTriggerProps> = (props) => {
-  const rest = omit(props, "variant", "size", "class", "children");
+  const rest = omit(props, "variant", "size", "class", "children", "style" as any);
   return (
     <ArkDialog.Trigger
       {...rest}
@@ -29,10 +30,10 @@ export const DialogTrigger: ParentComponent<DialogTriggerProps> = (props) => {
   );
 };
 
-export const DialogBackdrop: ParentComponent<ComponentProps<typeof ArkDialog.Backdrop>> = (
-  props,
-) => {
-  const rest = omit(props, "class", "children");
+export const DialogBackdrop: ParentComponent<
+  Omit<ComponentProps<typeof ArkDialog.Backdrop>, "style">
+> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   const styles = dialog();
   return (
     <ArkDialog.Backdrop {...rest} class={cx(styles.backdrop, props.class as string)}>
@@ -41,10 +42,10 @@ export const DialogBackdrop: ParentComponent<ComponentProps<typeof ArkDialog.Bac
   );
 };
 
-export const DialogPositioner: ParentComponent<ComponentProps<typeof ArkDialog.Positioner>> = (
-  props,
-) => {
-  const rest = omit(props, "class", "children");
+export const DialogPositioner: ParentComponent<
+  Omit<ComponentProps<typeof ArkDialog.Positioner>, "style">
+> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   const styles = dialog();
   return (
     <ArkDialog.Positioner {...rest} class={cx(styles.positioner, props.class as string)}>
@@ -53,8 +54,10 @@ export const DialogPositioner: ParentComponent<ComponentProps<typeof ArkDialog.P
   );
 };
 
-export const DialogContent: ParentComponent<ComponentProps<typeof ArkDialog.Content>> = (props) => {
-  const rest = omit(props, "class", "children");
+export const DialogContent: ParentComponent<
+  Omit<ComponentProps<typeof ArkDialog.Content>, "style">
+> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   const styles = dialog();
   return (
     <ArkDialog.Content {...rest} class={cx(styles.content, props.class as string)}>
@@ -63,13 +66,14 @@ export const DialogContent: ParentComponent<ComponentProps<typeof ArkDialog.Cont
   );
 };
 
-export interface DialogCloseTriggerProps extends ComponentProps<typeof ArkDialog.CloseTrigger> {
+export interface DialogCloseTriggerProps
+  extends Omit<ComponentProps<typeof ArkDialog.CloseTrigger>, "style"> {
   variant?: ButtonVariant["variant"];
   size?: ButtonVariant["size"];
 }
 
 export const DialogCloseTrigger: ParentComponent<DialogCloseTriggerProps> = (props) => {
-  const rest = omit(props, "variant", "size", "class", "children");
+  const rest = omit(props, "variant", "size", "class", "children", "style" as any);
   const styles = dialog();
 
   return (
@@ -103,8 +107,8 @@ export const DialogCloseTrigger: ParentComponent<DialogCloseTriggerProps> = (pro
   );
 };
 
-export const DialogHeader: ParentComponent<ComponentProps<"div">> = (props) => {
-  const rest = omit(props, "class", "children");
+export const DialogHeader: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   return (
     <div
       {...rest}
@@ -124,8 +128,10 @@ export const DialogHeader: ParentComponent<ComponentProps<"div">> = (props) => {
   );
 };
 
-export const DialogTitle: ParentComponent<ComponentProps<typeof ArkDialog.Title>> = (props) => {
-  const rest = omit(props, "class", "children");
+export const DialogTitle: ParentComponent<Omit<ComponentProps<typeof ArkDialog.Title>, "style">> = (
+  props,
+) => {
+  const rest = omit(props, "class", "children", "style" as any);
   const styles = dialog();
   return (
     <ArkDialog.Title {...rest} class={cx(styles.title, props.class as string)}>
@@ -134,10 +140,10 @@ export const DialogTitle: ParentComponent<ComponentProps<typeof ArkDialog.Title>
   );
 };
 
-export const DialogDescription: ParentComponent<ComponentProps<typeof ArkDialog.Description>> = (
-  props,
-) => {
-  const rest = omit(props, "class", "children");
+export const DialogDescription: ParentComponent<
+  Omit<ComponentProps<typeof ArkDialog.Description>, "style">
+> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   const styles = dialog();
   return (
     <ArkDialog.Description {...rest} class={cx(styles.description, props.class as string)}>
@@ -146,8 +152,8 @@ export const DialogDescription: ParentComponent<ComponentProps<typeof ArkDialog.
   );
 };
 
-export const DialogBody: ParentComponent<ComponentProps<"div">> = (props) => {
-  const rest = omit(props, "class", "children");
+export const DialogBody: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   return (
     <div
       {...rest}
@@ -166,8 +172,8 @@ export const DialogBody: ParentComponent<ComponentProps<"div">> = (props) => {
   );
 };
 
-export const DialogFooter: ParentComponent<ComponentProps<"div">> = (props) => {
-  const rest = omit(props, "class", "children");
+export const DialogFooter: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   return (
     <div
       {...rest}

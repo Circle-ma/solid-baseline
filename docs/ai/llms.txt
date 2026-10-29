@@ -11,18 +11,19 @@
 - Styling: Panda CSS with `strictTokens: true` & `strictPropertyValues: true`
 - Realtime Database: SpacetimeDB 2.x
 - RPC Transport: ConnectRPC
-- Lint & Format: Oxlint & Biome 2.6
+- Lint & Format: Oxlint, Biome 2.6, and Architectural Rails Validator (`scripts/check-rails.ts`)
 
 ## Design System Rails (鋪鐵軌而非設陷阱)
-1. **Zero Magic Numbers & Zero Hex Codes**:
+1. **Zero Inline Styles & Zero Magic Numbers**:
+   - `style={{ ... }}` is strictly forbidden and rejected at compile time.
    - `padding: "13px"` and `color: "#3b82f6"` are rejected at compile time.
-   - All properties must use tokens from `~/components/ui/tokens`.
+   - All properties must use tokens from `~/components/ui/tokens` (including surfaces, foregrounds, borders, accents, status tokens, and z-index hierarchy).
 2. **宣告 Margin 死亡 (Declare Margin Dead)**:
    - Zero `margin`, `mt`, `mb`. Spacing is exclusively orchestrated via parent `<Container>`, `<VStack>`, `<HStack>`, `<Grid>` using `gap`.
 3. **Compound Invariants**:
    - `<Card.Root>` and `<Dialog.Content>` encapsulate their own padding, gaps, and borders.
-4. **Typography First**:
-   - Never use raw `<p>`, `<span>`, `<h1>`. Use `<Heading>`, `<Text>`, and `<Code>`.
+4. **Typography & Primitives First**:
+   - Never use raw `<p>`, `<span>`, `<h1>`, or `<button>`. Use `<Heading>`, `<Text>`, `<Code>`, `<Button>`, and `<Badge>`.
 5. **Schema SSOT**:
    - All database, reducer, and API types derive from `src/schema/`.
 

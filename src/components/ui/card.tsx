@@ -6,9 +6,10 @@ import { card } from "styled-system/recipes";
 /**
  * Root Card Container
  * Encapsulated container with pre-configured padding, borders, and elevation.
+ * Inline `style` is strictly forbidden at compile time.
  */
-export const CardRoot: ParentComponent<ComponentProps<"div">> = (props) => {
-  const rest = omit(props, "class", "children");
+export const CardRoot: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   const styles = card();
   return (
     <div {...rest} class={cx(styles.root, props.class as string)}>
@@ -21,8 +22,8 @@ export const CardRoot: ParentComponent<ComponentProps<"div">> = (props) => {
  * Card Header Layout Slot
  * Tight vertical stack pairing title and description.
  */
-export const CardHeader: ParentComponent<ComponentProps<"div">> = (props) => {
-  const rest = omit(props, "class", "children");
+export const CardHeader: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   const styles = card();
   return (
     <div {...rest} class={cx(styles.header, props.class as string)}>
@@ -35,8 +36,8 @@ export const CardHeader: ParentComponent<ComponentProps<"div">> = (props) => {
  * Card Title Slot Component
  * High-contrast semantic heading.
  */
-export const CardTitle: ParentComponent<ComponentProps<"h3">> = (props) => {
-  const rest = omit(props, "class", "children");
+export const CardTitle: ParentComponent<Omit<ComponentProps<"h3">, "style">> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   const styles = card();
   return (
     <h3 {...rest} class={cx(styles.title, props.class as string)}>
@@ -49,8 +50,8 @@ export const CardTitle: ParentComponent<ComponentProps<"h3">> = (props) => {
  * Card Description Slot Component
  * Muted explanatory text.
  */
-export const CardDescription: ParentComponent<ComponentProps<"p">> = (props) => {
-  const rest = omit(props, "class", "children");
+export const CardDescription: ParentComponent<Omit<ComponentProps<"p">, "style">> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   const styles = card();
   return (
     <p {...rest} class={cx(styles.description, props.class as string)}>
@@ -63,8 +64,8 @@ export const CardDescription: ParentComponent<ComponentProps<"p">> = (props) => 
  * Card Body Layout Slot
  * Systematic container for card contents with uniform vertical spacing.
  */
-export const CardBody: ParentComponent<ComponentProps<"div">> = (props) => {
-  const rest = omit(props, "class", "children");
+export const CardBody: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   const styles = card();
   return (
     <div {...rest} class={cx(styles.body, props.class as string)}>
@@ -77,8 +78,8 @@ export const CardBody: ParentComponent<ComponentProps<"div">> = (props) => {
  * Card Footer Layout Slot
  * Action container with right-aligned button stack.
  */
-export const CardFooter: ParentComponent<ComponentProps<"div">> = (props) => {
-  const rest = omit(props, "class", "children");
+export const CardFooter: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
+  const rest = omit(props, "class", "children", "style" as any);
   const styles = card();
   return (
     <div {...rest} class={cx(styles.footer, props.class as string)}>

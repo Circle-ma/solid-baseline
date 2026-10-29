@@ -51,6 +51,22 @@ const buttonRecipe = defineRecipe({
         color: "fg.default",
         _hover: { bg: "bg.muted" },
       },
+      danger: {
+        bg: "danger.default",
+        color: "danger.fg",
+        _hover: { bg: "danger.emphasized" },
+        _focusVisible: {
+          outlineColor: "danger.default",
+        },
+      },
+      success: {
+        bg: "success.default",
+        color: "success.fg",
+        _hover: { bg: "success.emphasized" },
+        _focusVisible: {
+          outlineColor: "success.default",
+        },
+      },
     },
     size: {
       xs: { h: "7", px: "2.5", textStyle: "xs", gap: "1.5" },
@@ -67,7 +83,7 @@ const buttonRecipe = defineRecipe({
 
 const badgeRecipe = defineRecipe({
   className: "badge",
-  description: "Standard badge recipe",
+  description: "Standard badge recipe with systematic status intents",
   base: {
     display: "inline-flex",
     alignItems: "center",
@@ -79,31 +95,162 @@ const badgeRecipe = defineRecipe({
   },
   variants: {
     variant: {
-      solid: {
-        bg: "accent.default",
-        color: "accent.fg",
-      },
+      solid: {},
       subtle: {
-        bg: "bg.subtle",
-        color: "fg.default",
         borderWidth: "1px",
         borderStyle: "solid",
-        borderColor: "border.subtle",
       },
       outline: {
         borderWidth: "1px",
         borderStyle: "solid",
-        borderColor: "border.default",
-        color: "fg.default",
+        bg: "transparent",
       },
+    },
+    intent: {
+      default: {},
+      success: {},
+      danger: {},
+      warning: {},
+      info: {},
     },
     size: {
       sm: { px: "2", py: "1", textStyle: "xs" },
       md: { px: "2.5", py: "1", textStyle: "sm" },
     },
   },
+  compoundVariants: [
+    // solid variants
+    {
+      variant: "solid",
+      intent: "default",
+      css: {
+        bg: "accent.default",
+        color: "accent.fg",
+      },
+    },
+    {
+      variant: "solid",
+      intent: "success",
+      css: {
+        bg: "success.default",
+        color: "success.fg",
+      },
+    },
+    {
+      variant: "solid",
+      intent: "danger",
+      css: {
+        bg: "danger.default",
+        color: "danger.fg",
+      },
+    },
+    {
+      variant: "solid",
+      intent: "warning",
+      css: {
+        bg: "warning.default",
+        color: "warning.fg",
+      },
+    },
+    {
+      variant: "solid",
+      intent: "info",
+      css: {
+        bg: "info.default",
+        color: "info.fg",
+      },
+    },
+    // subtle variants
+    {
+      variant: "subtle",
+      intent: "default",
+      css: {
+        bg: "bg.subtle",
+        color: "fg.default",
+        borderColor: "border.subtle",
+      },
+    },
+    {
+      variant: "subtle",
+      intent: "success",
+      css: {
+        bg: "success.subtle",
+        color: "success.text",
+        borderColor: "success.border",
+      },
+    },
+    {
+      variant: "subtle",
+      intent: "danger",
+      css: {
+        bg: "danger.subtle",
+        color: "danger.text",
+        borderColor: "danger.border",
+      },
+    },
+    {
+      variant: "subtle",
+      intent: "warning",
+      css: {
+        bg: "warning.subtle",
+        color: "warning.text",
+        borderColor: "warning.border",
+      },
+    },
+    {
+      variant: "subtle",
+      intent: "info",
+      css: {
+        bg: "info.subtle",
+        color: "info.text",
+        borderColor: "info.border",
+      },
+    },
+    // outline variants
+    {
+      variant: "outline",
+      intent: "default",
+      css: {
+        borderColor: "border.default",
+        color: "fg.default",
+      },
+    },
+    {
+      variant: "outline",
+      intent: "success",
+      css: {
+        borderColor: "success.border",
+        color: "success.text",
+      },
+    },
+    {
+      variant: "outline",
+      intent: "danger",
+      css: {
+        borderColor: "danger.border",
+        color: "danger.text",
+      },
+    },
+    {
+      variant: "outline",
+      intent: "warning",
+      css: {
+        borderColor: "warning.border",
+        color: "warning.text",
+      },
+    },
+    {
+      variant: "outline",
+      intent: "info",
+      css: {
+        borderColor: "info.border",
+        color: "info.text",
+      },
+    },
+  ],
   defaultVariants: {
     variant: "subtle",
+    intent: "default",
     size: "sm",
   },
 });
@@ -213,7 +360,7 @@ const dialogSlotRecipe = defineSlotRecipe({
       inset: "0",
       zIndex: "overlay",
       backdropBlur: "sm",
-      bg: "rgba(0, 0, 0, 0.5)",
+      bg: "bg.backdrop",
     },
     positioner: {
       position: "fixed",
@@ -310,8 +457,18 @@ export default defineConfig({
           l3: { value: "0.75rem" },
         },
         zIndex: {
-          overlay: { value: "1000" },
-          modal: { value: "1100" },
+          hide: { value: "-1" },
+          base: { value: "0" },
+          docked: { value: "10" },
+          dropdown: { value: "1000" },
+          sticky: { value: "1100" },
+          banner: { value: "1200" },
+          overlay: { value: "1300" },
+          modal: { value: "1400" },
+          popover: { value: "1500" },
+          toast: { value: "1600" },
+          tooltip: { value: "1700" },
+          max: { value: "9999" },
         },
       },
       semanticTokens: {
@@ -339,6 +496,12 @@ export default defineConfig({
               value: {
                 base: "{colors.slate.200}",
                 _dark: "{colors.slate.700}",
+              },
+            },
+            backdrop: {
+              value: {
+                base: "rgba(0, 0, 0, 0.5)",
+                _dark: "rgba(0, 0, 0, 0.75)",
               },
             },
           },
@@ -393,6 +556,197 @@ export default defineConfig({
               value: {
                 base: "{colors.white}",
                 _dark: "{colors.slate.950}",
+              },
+            },
+          },
+          // Systematic Status Semantic Tokens
+          success: {
+            default: {
+              value: {
+                base: "{colors.emerald.600}",
+                _dark: "{colors.emerald.500}",
+              },
+            },
+            emphasized: {
+              value: {
+                base: "{colors.emerald.700}",
+                _dark: "{colors.emerald.400}",
+              },
+            },
+            subtle: {
+              value: {
+                base: "{colors.emerald.50}",
+                _dark: "{colors.emerald.950}",
+              },
+            },
+            fg: {
+              value: {
+                base: "{colors.white}",
+                _dark: "{colors.emerald.950}",
+              },
+            },
+            border: {
+              value: {
+                base: "{colors.emerald.300}",
+                _dark: "{colors.emerald.800}",
+              },
+            },
+            text: {
+              value: {
+                base: "{colors.emerald.700}",
+                _dark: "{colors.emerald.300}",
+              },
+            },
+          },
+          danger: {
+            default: {
+              value: {
+                base: "{colors.red.600}",
+                _dark: "{colors.red.500}",
+              },
+            },
+            emphasized: {
+              value: {
+                base: "{colors.red.700}",
+                _dark: "{colors.red.400}",
+              },
+            },
+            subtle: {
+              value: {
+                base: "{colors.red.50}",
+                _dark: "{colors.red.950}",
+              },
+            },
+            fg: {
+              value: {
+                base: "{colors.white}",
+                _dark: "{colors.red.950}",
+              },
+            },
+            border: {
+              value: {
+                base: "{colors.red.300}",
+                _dark: "{colors.red.800}",
+              },
+            },
+            text: {
+              value: {
+                base: "{colors.red.700}",
+                _dark: "{colors.red.300}",
+              },
+            },
+          },
+          error: {
+            default: {
+              value: {
+                base: "{colors.red.600}",
+                _dark: "{colors.red.500}",
+              },
+            },
+            emphasized: {
+              value: {
+                base: "{colors.red.700}",
+                _dark: "{colors.red.400}",
+              },
+            },
+            subtle: {
+              value: {
+                base: "{colors.red.50}",
+                _dark: "{colors.red.950}",
+              },
+            },
+            fg: {
+              value: {
+                base: "{colors.white}",
+                _dark: "{colors.red.950}",
+              },
+            },
+            border: {
+              value: {
+                base: "{colors.red.300}",
+                _dark: "{colors.red.800}",
+              },
+            },
+            text: {
+              value: {
+                base: "{colors.red.700}",
+                _dark: "{colors.red.300}",
+              },
+            },
+          },
+          warning: {
+            default: {
+              value: {
+                base: "{colors.amber.500}",
+                _dark: "{colors.amber.400}",
+              },
+            },
+            emphasized: {
+              value: {
+                base: "{colors.amber.600}",
+                _dark: "{colors.amber.300}",
+              },
+            },
+            subtle: {
+              value: {
+                base: "{colors.amber.50}",
+                _dark: "{colors.amber.950}",
+              },
+            },
+            fg: {
+              value: {
+                base: "{colors.white}",
+                _dark: "{colors.amber.950}",
+              },
+            },
+            border: {
+              value: {
+                base: "{colors.amber.300}",
+                _dark: "{colors.amber.800}",
+              },
+            },
+            text: {
+              value: {
+                base: "{colors.amber.800}",
+                _dark: "{colors.amber.300}",
+              },
+            },
+          },
+          info: {
+            default: {
+              value: {
+                base: "{colors.sky.600}",
+                _dark: "{colors.sky.500}",
+              },
+            },
+            emphasized: {
+              value: {
+                base: "{colors.sky.700}",
+                _dark: "{colors.sky.400}",
+              },
+            },
+            subtle: {
+              value: {
+                base: "{colors.sky.50}",
+                _dark: "{colors.sky.950}",
+              },
+            },
+            fg: {
+              value: {
+                base: "{colors.white}",
+                _dark: "{colors.sky.950}",
+              },
+            },
+            border: {
+              value: {
+                base: "{colors.sky.300}",
+                _dark: "{colors.sky.800}",
+              },
+            },
+            text: {
+              value: {
+                base: "{colors.sky.700}",
+                _dark: "{colors.sky.300}",
               },
             },
           },

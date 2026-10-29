@@ -6,12 +6,12 @@ You MUST adhere strictly to the following architectural rules:
 ## 1. Toolchain & Runtime
 - **Architecture**: Solid 2.0 Start-Mode SPA (`start: true, ssr: false`). Follows the official 2.0 unified convention (`src/Document.tsx` shell + `src/App.tsx` root), enabling instant 1-boolean migration to streaming SSR (`ssr: true`).
 - **Runtime**: Bun (`bun`, `bunx`). Do not emit `npm`, `yarn`, or `npx`.
-- **Linter**: Oxlint (`oxlint src`). Never add ESLint configs.
+- **Linter & Guardrails**: Oxlint (`oxlint src`), Biome (`biome check .`), and the automated rail validator (`bun run scripts/check-rails.ts`). Run all with `bun run check`.
 - **Formatter**: Biome (`biome format --write .`). Never add Prettier configs.
 
 ## 2. Solid.js 2.0 Core Rules
 - **Props**: Always read props directly as `props.value`. NEVER destructure props (`function C({ name })` is BANNED).
-- **Props Forwarding**: Use `omit(props, ...keys)` with rest parameters (`const rest = omit(props, "class", "children")`). `splitProps` was removed in Solid 2.0.
+- **Props Forwarding**: Use `omit(props, ...keys)` with rest parameters (`const rest = omit(props, "class", "children", "style" as any)`). `splitProps` was removed in Solid 2.0.
 - **Reactivity**: Computations and `createMemo` can return Promises natively. Do NOT use `createResource`.
 - **Boundaries**: Use `<Loading>` for async fallback states and `<Errored>` for error boundaries. Do NOT use `<Suspense>` or `<ErrorBoundary>`.
 - **Effects**: `createEffect` takes two functions: `createEffect(() => dep(), val => { ... })`.
@@ -19,21 +19,34 @@ You MUST adhere strictly to the following architectural rules:
 - **Web Package**: Import Dynamic and Portal from `@solidjs/web`, not `solid-js/web`.
 
 ## 3. The Paved Path UI Manifesto: 鋪鐵軌而非設陷阱 (Lay the Rails, Don't Set Traps)
+- **Zero Inline Styles (`style={{ ... }}` is BANNED)**:
+  - All UI primitives strip the `style` prop at compile time (`Omit<ComponentProps<...>, "style">`).
+  - Passing `style={{ ... }}` triggers a TypeScript compilation error.
+  - An automated pre-commit / CI script (`bun run scripts/check-rails.ts`) scans the codebase and fails if any inline style is detected.
 - **Zero Magic Numbers & Zero Hex Colors**:
   - `strictTokens: true` and `strictPropertyValues: true` are enforced by the TypeScript compiler.
   - NEVER write magic pixel values like `padding: "13px"` or `gap: "17px"`.
-  - NEVER write hardcoded colors like `color: "#3b82f6"` or `bg: "rgb(...)"`.
+  - NEVER write hardcoded hex/RGB colors like `color: "#ef4444"`, `color: "#10b981"`, or `bg: "rgba(...)"`.
   - ALWAYS use semantic tokens from `~/components/ui/tokens`:
-    - Spacing: `"0"`, `"1"` (4px), `"1.5"` (6px), `"2"` (8px), `"3"` (12px), `"4"` (16px), `"5"` (20px), `"6"` (24px), `"8"` (32px), `"10"` (40px), `"12"` (48px).
-    - Surfaces: `"bg.canvas"`, `"bg.default"`, `"bg.subtle"`, `"bg.muted"`.
+    - Spacing: `"0"`, `"1"` (4px), `"1.5"` (6px), `"2"` (8px), `"2.5"` (10px), `"3"` (12px), `"4"` (16px), `"5"` (20px), `"6"` (24px), `"8"` (32px), `"10"` (40px), `"12"` (48px).
+    - Surfaces: `"bg.canvas"`, `"bg.default"`, `"bg.subtle"`, `"bg.muted"`, `"bg.backdrop"`.
     - Foregrounds: `"fg.default"`, `"fg.muted"`, `"fg.subtle"`.
     - Borders: `"border.subtle"`, `"border.default"`.
     - Accents: `"accent.default"`, `"accent.emphasized"`, `"accent.fg"`.
+    - Status & Feedback:
+      - Success: `"success.default"`, `"success.subtle"`, `"success.fg"`, `"success.border"`, `"success.text"`.
+      - Danger: `"danger.default"`, `"danger.subtle"`, `"danger.fg"`, `"danger.border"`, `"danger.text"`.
+      - Warning: `"warning.default"`, `"warning.subtle"`, `"warning.fg"`, `"warning.border"`, `"warning.text"`.
+      - Info: `"info.default"`, `"info.subtle"`, `"info.fg"`, `"info.border"`, `"info.text"`.
+- **Stacking Context (Z-Index Hierarchy)**:
+  - Arbitrary numbers like `z-index: 60` or `50` are strictly BANNED.
+  - Use tokens: `"hide"` (-1), `"base"` (0), `"docked"` (10), `"dropdown"` (1000), `"sticky"` (1100), `"banner"` (1200), `"overlay"` (1300), `"modal"` (1400), `"popover"` (1500), `"toast"` (1600), `"tooltip"` (1700), `"max"` (9999).
 - **宣告 Margin 死亡 (Declare Margin Dead)**:
   - Components MUST NEVER control their outside spacing. Zero `margin`, `mt`, `mb`, `ml`, `mr`, `mx`, `my`.
   - Spacing between siblings is 100% orchestrated by parent layout containers using `gap`.
 - **佈局只走鐵軌容器 (Layout Rails via `~/components/ui`)**:
   - Use verified Solid 2.0 layout containers: `<Container>`, `<VStack>`, `<HStack>`, `<Grid>`, `<Box>`, `<Divider>`.
+  - Layout containers support systematic props: `position`, `zIndex`, `minH`, `maxH`, `w`, `p`, `px`, `py`, `bg`, `color`, `borderWidth`, `borderColor`, `borderRadius`, `overflowY`, `boxShadow`.
   - NEVER import layout primitives from `styled-system/jsx` (Panda's factory is Solid 1.x-only).
 - **複合組件的「不變量骨架」(Compound Component Invariants)**:
   - `<Card.Root>`: Invariant 24px padding (`p="6"`), `gap="6"`, border, and shadow.
@@ -42,6 +55,8 @@ You MUST adhere strictly to the following architectural rules:
 - **Typography & Primitives First**:
   - Raw unstyled `<button>`, `<p>`, `<span>`, `<h1>`-`<h6>` tags are BANNED.
   - Use `<Heading>`, `<Text>`, `<Code>`, `<Button>`, and `<Badge>` from `~/components/ui`.
+  - `<Button>` variants: `"solid"`, `"outline"`, `"ghost"`, `"subtle"`, `"danger"`, `"success"`.
+  - `<Badge>` variants: `"subtle"`, `"solid"`, `"outline"` with `intent="default" | "success" | "danger" | "warning" | "info"`.
 - **Zero Tailwind**: NEVER use Tailwind CSS classes (`flex`, `p-4`, `bg-blue-500` etc. are forbidden).
 
 ## 4. Headless UI (Ark UI + Panda CSS Recipes)

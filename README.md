@@ -48,9 +48,14 @@ A high-performance, type-safe, zero-tech-debt starter framework engineered for t
 
 ### 3. Layout & Styling: Paved Path Design Rails
 
-- **Container-First Layout**: Sibling spacing MUST be handled by framework containers (`<Container>`, `<VStack>`, `<HStack>`, `<Grid>`) using `gap`.
+- **Zero Inline Styles & Zero Hardcoding**: `style={{ ... }}` is strictly prohibited and stripped from all UI primitives at the type level. Hardcoded hex colors (`#ef4444`, `#10b981`), raw `rgba()`, and arbitrary magic z-index numbers are rejected at compile time and verified via an automated CI rail validator (`bun run check:rails`).
+- **Complete Closed-World Design Tokens**:
+  - **Surfaces & Borders**: `"bg.canvas"`, `"bg.default"`, `"bg.subtle"`, `"bg.muted"`, `"bg.backdrop"`, `"border.subtle"`, `"border.default"`.
+  - **Status & Feedback**: Full semantic tokens for `"success"`, `"danger"` (error), `"warning"`, and `"info"` covering defaults, subtle surfaces, foregrounds, borders, and text.
+  - **Stacking Context (Z-Index Scale)**: `"hide"` (-1), `"base"` (0), `"docked"` (10), `"dropdown"` (1000), `"sticky"` (1100), `"banner"` (1200), `"overlay"` (1300), `"modal"` (1400), `"popover"` (1500), `"toast"` (1600), `"tooltip"` (1700), `"max"` (9999).
+- **Container-First Layout**: Sibling spacing MUST be handled by framework containers (`<Container>`, `<VStack>`, `<HStack>`, `<Grid>`) using `gap`. Layout primitives support systematic props (`position`, `zIndex`, `borderWidth`, `borderColor`, `overflowY`, `boxShadow`).
 - **Layout Alignment**: While sibling push-margins are banned, layout alignment margins (`m="auto"`, `ml="auto"`) are permitted for flex positioning.
-- **Typography First**: Do NOT use raw unstyled `<p>`, `<span>`, `<h1>`-`<h6>` tags. Use `<Heading>`, `<Text>`, and `<Code>` primitives from `~/components/ui/typography`.
+- **Typography & Primitives First**: Do NOT use raw unstyled `<p>`, `<span>`, `<h1>`-`<h6>`, or `<button>` tags. Use `<Heading>`, `<Text>`, `<Code>`, `<Button>`, and `<Badge>` primitives from `~/components/ui`.
 - **Native Slot Recipes**: Components bind cleanly to Panda CSS 2.4 slot recipes (`card`, `dialog`, `button`, `badge`, `text`) without redundant duplicate inline overrides.
 - **Strict Tokens**: Compiler enforces `strictTokens: true` and `strictPropertyValues: true`. No magic pixel values or random hex colors.
 

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "oxlint src",
     "format": "biome format --write .",
-    "check": "oxlint src && biome check .",
+    "check": "oxlint src && biome check . && bun run scripts/check-rails.ts",
+    "check:rails": "bun run scripts/check-rails.ts",
     "typecheck": "tsc --noEmit"
   },
   "license": "MIT",

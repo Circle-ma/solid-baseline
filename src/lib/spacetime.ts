@@ -63,6 +63,26 @@ export function callReducer(params: TxReducerParams) {
 }
 
 /**
+ * Toggles between live simulated WebSocket mode and local reactive cache.
+ */
+export function toggleSimulationMode() {
+  setIsConnected((prev) => {
+    const next = !prev;
+    setConnectionMode(next ? "live" : "local-cache");
+    return next;
+  });
+}
+
+/**
+ * Clears the local reactive record store.
+ */
+export function clearRecords() {
+  setRecords((draft) => {
+    draft.length = 0;
+  });
+}
+
+/**
  * Connects lifecycle callbacks on a SpacetimeDB connection builder to reactive Solid signals.
  */
 export function setupConnectionListeners<T extends DbConnectionImpl<any>>(builder: {

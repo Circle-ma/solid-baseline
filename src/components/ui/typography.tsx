@@ -6,7 +6,7 @@ import { type TextVariant, text } from "styled-system/recipes";
 import type { SystemProperties } from "styled-system/types/system";
 import type { ColorToken } from "./tokens";
 
-export interface HeadingProps extends ComponentProps<"h2"> {
+export interface HeadingProps extends Omit<ComponentProps<"h2">, "style"> {
   as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
   size?: TextVariant["size"];
   letterSpacing?: SystemProperties["letterSpacing"];
@@ -24,6 +24,7 @@ export const Heading: ParentComponent<HeadingProps> = (props) => {
     "color",
     "class",
     "children",
+    "style" as any,
   );
   return (
     <Dynamic
@@ -47,7 +48,7 @@ export const Heading: ParentComponent<HeadingProps> = (props) => {
   );
 };
 
-export interface TextProps extends ComponentProps<"p"> {
+export interface TextProps extends Omit<ComponentProps<"p">, "style"> {
   as?: "p" | "span" | "label" | "div";
   size?: TextVariant["size"];
   color?: ColorToken;
@@ -56,7 +57,17 @@ export interface TextProps extends ComponentProps<"p"> {
 }
 
 export const Text: ParentComponent<TextProps> = (props) => {
-  const rest = omit(props, "as", "size", "color", "fontWeight", "lineHeight", "class", "children");
+  const rest = omit(
+    props,
+    "as",
+    "size",
+    "color",
+    "fontWeight",
+    "lineHeight",
+    "class",
+    "children",
+    "style" as any,
+  );
   return (
     <Dynamic
       component={props.as ?? "p"}
@@ -79,13 +90,13 @@ export const Text: ParentComponent<TextProps> = (props) => {
   );
 };
 
-export interface CodeProps extends ComponentProps<"code"> {
+export interface CodeProps extends Omit<ComponentProps<"code">, "style"> {
   size?: TextVariant["size"];
   color?: ColorToken;
 }
 
 export const Code: ParentComponent<CodeProps> = (props) => {
-  const rest = omit(props, "size", "color", "class", "children");
+  const rest = omit(props, "size", "color", "class", "children", "style" as any);
   return (
     <code
       {...rest}

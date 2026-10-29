@@ -3,11 +3,13 @@ import { Badge, Button, Card, Code, HStack, Text, VStack } from "~/components/ui
 import { checkSystemHealth, isRpcPending, rpcLatencyMs, rpcResponse } from "~/lib/connect";
 import {
   callReducer,
+  clearRecords,
   clientIdentity,
   connectionMode,
   isConnected,
   latencyMs,
   records,
+  toggleSimulationMode,
 } from "~/lib/spacetime";
 
 export default function Realtime() {
@@ -24,10 +26,12 @@ export default function Realtime() {
               </Card.Description>
             </VStack>
             <HStack gap="2" alignItems="center">
-              <Badge variant={isConnected() ? "solid" : "subtle"}>
+              <Badge variant="subtle" intent={isConnected() ? "success" : "warning"}>
                 {connectionMode() === "live" ? "Live WebSocket" : "Reactive Local Cache"}
               </Badge>
-              <Badge variant="outline">{clientIdentity()}</Badge>
+              <Badge variant="outline" intent="default">
+                {clientIdentity()}
+              </Badge>
             </HStack>
           </HStack>
         </Card.Header>
@@ -57,18 +61,26 @@ export default function Realtime() {
                   </Text>
                 </Show>
               </HStack>
-              <Button
-                variant="solid"
-                size="sm"
-                onClick={() =>
-                  callReducer({
-                    action: "TX_EVENT",
-                    payload: `Mutation @ ${new Date().toLocaleTimeString()}`,
-                  })
-                }
-              >
-                ⚡ Dispatch Reducer
-              </Button>
+              <HStack gap="2">
+                <Button variant="outline" size="sm" onClick={() => toggleSimulationMode()}>
+                  {isConnected() ? "Disconnect" : "Simulate Live"}
+                </Button>
+                <Button variant="danger" size="sm" onClick={() => clearRecords()}>
+                  Clear Store
+                </Button>
+                <Button
+                  variant="solid"
+                  size="sm"
+                  onClick={() =>
+                    callReducer({
+                      action: "TX_EVENT",
+                      payload: `Mutation @ ${new Date().toLocaleTimeString()}`,
+                    })
+                  }
+                >
+                  ⚡ Dispatch Reducer
+                </Button>
+              </HStack>
             </HStack>
 
             <VStack
@@ -95,7 +107,7 @@ export default function Realtime() {
                     borderColor="border.subtle"
                   >
                     <HStack gap="2" alignItems="center">
-                      <Badge variant="outline" size="sm">
+                      <Badge variant="outline" intent="default" size="sm">
                         {record.action}
                       </Badge>
                       <Text size="xs" fontWeight="medium" color="fg.default">
@@ -123,7 +135,16 @@ export default function Realtime() {
                 Type-safe Protobuf and JSON RPC over standard HTTP/1.1 and HTTP/2 fetch.
               </Card.Description>
             </VStack>
-            <Badge variant={rpcResponse() ? "solid" : "subtle"}>
+            <Badge
+              variant="subtle"
+              intent={
+                rpcResponse()?.status === "SERVING"
+                  ? "success"
+                  : rpcResponse()
+                    ? "danger"
+                    : "default"
+              }
+            >
               {rpcResponse() ? `Status: ${rpcResponse()?.status}` : "Uncalled"}
             </Badge>
           </HStack>
@@ -177,7 +198,11 @@ export default function Realtime() {
                   borderColor="border.subtle"
                 >
                   <HStack gap="2" alignItems="center">
-                    <Badge variant="solid" size="sm">
+                    <Badge
+                      variant="solid"
+                      intent={res().status === "SERVING" ? "success" : "danger"}
+                      size="sm"
+                    >
                       {res().status}
                     </Badge>
                     <Text size="xs" color="fg.muted">

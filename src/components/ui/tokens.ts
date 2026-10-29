@@ -53,6 +53,7 @@ export const SURFACES = {
   default: "bg.default",
   subtle: "bg.subtle",
   muted: "bg.muted",
+  backdrop: "bg.backdrop",
 } as const;
 
 /**
@@ -70,4 +71,73 @@ export const FOREGROUNDS = {
 export const BORDERS = {
   subtle: "border.subtle",
   default: "border.default",
+} as const;
+
+/**
+ * Canonical Semantic Accents
+ */
+export const ACCENTS = {
+  default: "accent.default",
+  emphasized: "accent.emphasized",
+  fg: "accent.fg",
+} as const;
+
+/**
+ * Systematic Status & Feedback Color Tokens
+ * Always use these tokens for operational states, alerts, badges, and telemetry.
+ * Never invent raw hex codes or alpha strings.
+ */
+export const STATUS = {
+  success: {
+    default: "success.default",
+    emphasized: "success.emphasized",
+    subtle: "success.subtle",
+    fg: "success.fg",
+    border: "success.border",
+    text: "success.text",
+  },
+  danger: {
+    default: "danger.default",
+    emphasized: "danger.emphasized",
+    subtle: "danger.subtle",
+    fg: "danger.fg",
+    border: "danger.border",
+    text: "danger.text",
+  },
+  warning: {
+    default: "warning.default",
+    emphasized: "warning.emphasized",
+    subtle: "warning.subtle",
+    fg: "warning.fg",
+    border: "warning.border",
+    text: "warning.text",
+  },
+  info: {
+    default: "info.default",
+    emphasized: "info.emphasized",
+    subtle: "info.subtle",
+    fg: "info.fg",
+    border: "info.border",
+    text: "info.text",
+  },
+} as const;
+
+/**
+ * Closed-World Stacking Context (Z-Index) Scale
+ * Every layer in the UI must bind to this hierarchy.
+ * Arbitrary magic z-index numbers (e.g. 50, 60, 9999) are strictly forbidden.
+ */
+export const Z_INDEX = {
+  hide: "hide", // -1
+  base: "base", // 0
+  docked: "docked", // 10
+  dropdown: "dropdown", // 1000
+  sticky: "sticky", // 1100
+  banner: "banner", // 1200
+  overlay: "overlay", // 1300
+  modal: "modal", // 1400
+  popover: "popover", // 1500
+  toast: "toast", // 1600
+  tooltip: "tooltip", // 1700
+  max: "max", // 9999
 } as const;
