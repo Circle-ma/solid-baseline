@@ -63,12 +63,12 @@ Complex multi-part components encapsulate their internal spatial rhythm and hier
 - Raw unstyled `<button>`, `<p>`, `<span>`, `<h1>`-`<h6>` tags are BANNED.
 - Always use semantic primitives from `~/components/ui`:
   - `<Heading as="h1" size="2xl">`: Page and section titles.
-  - `<Text size="sm" color="fg.muted">`: Body copy and explanatory text.
+  - `<Text size="sm" tone="muted">`: Body copy and explanatory text.
   - `<Code size="xs">`: Telemetry, identifiers, and timestamps.
   - `<Button variant="solid" size="sm">`: Supports `"solid"`, `"outline"`, `"ghost"`, `"subtle"`, `"danger"`, `"success"`.
   - `<Badge variant="subtle" intent="success">`: Supports `"subtle"`, `"solid"`, `"outline"` with `intent="default" | "success" | "danger" | "warning" | "info"`.
 
 ### 7. Solid 2.0 Props & Reactivity
 - Props must be read directly as `props.value` (Never destructure).
-- Forward props via `const rest = omit(props, "class", "children", "style" as any)` from `"solid-js"`.
+- Forward props via `const rest = omitProps(props, "class", "children", "style")` from `"~/components/ui/tokens"`.
 - Modals operate headlessly via Zag.js state machines. `<Dialog.Portal>` internally binds to `useDialogContext()` and `<Show when={dialog().open}>`, guaranteeing 100% clean physical DOM teardown on ESC or dismissal with zero ghost overlays and zero signal boilerplate.

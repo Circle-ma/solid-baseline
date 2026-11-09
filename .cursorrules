@@ -4,19 +4,24 @@ You are an expert fullstack engineer working in this codebase.
 You MUST adhere strictly to the following architectural rules:
 
 ## 1. Toolchain & Runtime
-- **Architecture**: Solid 2.0 Start-Mode SPA (`start: true, ssr: false`). Follows the official 2.0 unified convention (`src/Document.tsx` shell + `src/App.tsx` root), enabling instant 1-boolean migration to streaming SSR (`ssr: true`).
+- **Architecture**: Solid 2.0 Start-Mode SPA (`start: true, ssr: false, diagnostics: true`). Follows the official 2.0 unified convention (`src/Document.tsx` shell + `src/App.tsx` root), enabling instant 1-boolean migration to streaming SSR (`ssr: true`).
 - **Runtime**: Bun (`bun`, `bunx`). Do not emit `npm`, `yarn`, or `npx`.
 - **Linter & Guardrails**: Oxlint (`oxlint src`), Biome (`biome check .`), and the automated rail validator (`bun run scripts/check-rails.ts`). Run all with `bun run check`.
 - **Formatter**: Biome (`biome format --write .`). Never add Prettier configs.
+- **Type Checking**: TypeScript (`bun run typecheck` / `tsc --noEmit`).
 
 ## 2. Solid.js 2.0 Core Rules
 - **Props**: Always read props directly as `props.value`. NEVER destructure props (`function C({ name })` is BANNED).
-- **Props Forwarding**: Use `omit(props, ...keys)` with rest parameters (`const rest = omit(props, "class", "children", "style" as any)`). `splitProps` was removed in Solid 2.0.
+- **Props Forwarding**: Use `omitProps(props, ...keys)` with rest parameters (`const rest = omitProps(props, "class", "children", "style")`). Casting `"style" as any` is strictly BANNED.
+- **Signal Attribution**: Always provide `{ name: "..." }` when creating signals and memos for `@solidjs/diagnostics`.
+- **SSR-Safe State & Context**: Never declare module-scope mutable signals or stores. Mount state via default-less Context Providers (`TelemetryProvider` + `useTelemetry`).
+- **Deterministic Hydration**: Use deterministic seed values during initial server rendering (`timestamp: "00:00:00"`, `clientIdentity: "usr_local_node_01"`). Generate dynamic client values only inside `onSettled` or actions.
+- **Actions & Optimistic State**: In transition handlers, use `createOptimistic(false, { name: "..." })` and `action(function* () { setFlag(true); ... })` to immediately acknowledge the hold before the first `yield`.
 - **Reactivity**: Computations and `createMemo` can return Promises natively. Do NOT use `createResource`.
 - **Boundaries**: Use `<Loading>` for async fallback states and `<Errored>` for error boundaries. Do NOT use `<Suspense>` or `<ErrorBoundary>`.
 - **Effects**: `createEffect` takes two functions: `createEffect(() => dep(), val => { ... })`.
 - **Stores**: Modify stores directly inside the draft setter: `setStore(draft => { draft.prop = val; })`.
-- **Web Package**: Import Dynamic and Portal from `@solidjs/web`, not `solid-js/web`.
+- **Web Package**: Import Dynamic, Portal, and isServer from `@solidjs/web`, not `solid-js/web`.
 
 ## 3. The Paved Path UI Manifesto: 鋪鐵軌而非設陷阱 (Lay the Rails, Don't Set Traps)
 - **Zero Inline Styles (`style={{ ... }}` is BANNED)**:
@@ -29,7 +34,7 @@ You MUST adhere strictly to the following architectural rules:
   - NEVER write hardcoded hex/RGB colors like `color: "#ef4444"`, `color: "#10b981"`, or `bg: "rgba(...)"`.
   - ALWAYS use semantic tokens from `~/components/ui/tokens`:
     - Spacing: `"0"`, `"1"` (4px), `"1.5"` (6px), `"2"` (8px), `"2.5"` (10px), `"3"` (12px), `"4"` (16px), `"5"` (20px), `"6"` (24px), `"8"` (32px), `"10"` (40px), `"12"` (48px).
-    - Surfaces: `"bg.canvas"`, `"bg.default"`, `"bg.subtle"`, `"bg.muted"`, `"bg.backdrop"`.
+    - Surfaces: `"bg.canvas"`, `"bg.default"`, `"bg.elevated"`, `"bg.subtle"`, `"bg.muted"`, `"bg.backdrop"`.
     - Foregrounds: `"fg.default"`, `"fg.muted"`, `"fg.subtle"`.
     - Borders: `"border.subtle"`, `"border.default"`.
     - Accents: `"accent.default"`, `"accent.emphasized"`, `"accent.fg"`.
@@ -52,25 +57,46 @@ You MUST adhere strictly to the following architectural rules:
   - `<Card.Root>`: Invariant 24px padding (`p="6"`), `gap="6"`, border, and shadow.
   - `<Dialog.Content>`: Invariant 24px padding (`p="6"`), `gap="5"`, `maxW="md"`, subtle border, elevation shadow.
   - NEVER manually wrap an outer `<VStack>` inside `<Dialog.Content>` or `<Card.Root>`.
-- **Typography & Primitives First**:
-  - Raw unstyled `<button>`, `<p>`, `<span>`, `<h1>`-`<h6>` tags are BANNED.
-  - Use `<Heading>`, `<Text>`, `<Code>`, `<Button>`, and `<Badge>` from `~/components/ui`.
-  - `<Button>` variants: `"solid"`, `"outline"`, `"ghost"`, `"subtle"`, `"danger"`, `"success"`.
-  - `<Badge>` variants: `"subtle"`, `"solid"`, `"outline"` with `intent="default" | "success" | "danger" | "warning" | "info"`.
+- **Systematic UI Primitives**:
+  - Raw unstyled HTML tags outside UI primitives are strictly BANNED.
+  - `<Button>`: Variants: `"solid"`, `"outline"`, `"ghost"`, `"subtle"`, `"danger"`, `"success"`.
+  - `<Badge>`: Variants: `"subtle"`, `"solid"`, `"outline"` with `intent="default" | "success" | "danger" | "warning" | "info"`.
+  - `<Input>`: Systematic input primitive with Solid 2.0 draft synchronization (`createSignal` + `createEffect`), preventing `[UNCOMMITTED_INPUT_OVERWRITTEN]` diagnostics.
+  - `<NavLink>`: Accessible navigation link primitive with active route matching and focus-visible rings.
+  - `<AsyncBoundary>`: Systematic boundary coordinating Solid 2.0 `<Errored>` (with `err()` getter and `reset` action) and `<Loading on={...}>` with token-based fallback surfaces.
+  - `<Heading>`, `<Text>`, `<Code>`: Zero-runtime typography primitives powered by Panda recipes.
+    - Variants: `tone` (`"default"`, `"muted"`, `"subtle"`, `"accent"`, `"success"`, `"danger"`, `"warning"`, `"info"`), `weight` (`"normal"`, `"medium"`, `"semibold"`, `"bold"`), `leading` (`"none"`, `"tight"`, `"snug"`, `"normal"`, `"relaxed"`), `tracking` (`"tighter"`, `"tight"`, `"normal"`, `"wide"`, `"wider"`, `"widest"`).
+    - Use `tabular` boolean prop for numbers and timestamps to prevent horizontal layout shift.
+    - Legacy props `color=`, `fontWeight=`, `lineHeight=`, and `letterSpacing=` are strictly banned in favor of recipe variants.
 - **Zero Tailwind**: NEVER use Tailwind CSS classes (`flex`, `p-4`, `bg-blue-500` etc. are forbidden).
 
 ## 4. Headless UI (Ark UI + Panda CSS Recipes)
 - **Autonomous Modal Slots**:
   - `<Dialog.Header>`: Tight column (`gap="1.5"`), with `pr="8"` reserved for the top-right X button.
-  - `<Dialog.Title>`: Semibold high-contrast heading (`fontSize="lg"`).
-  - `<Dialog.Description>`: Muted secondary context (`fontSize="sm"`, `color="fg.muted"`).
-  - `<Dialog.Body>`: High-contrast primary message region (`fontSize="sm"`, `color="fg.default"`).
+  - `<Dialog.Title>`: Semibold high-contrast heading (`textStyle="lg"`).
+  - `<Dialog.Description>`: Muted secondary context (`textStyle="sm"`, `color="fg.muted"`).
+  - `<Dialog.Body>`: High-contrast primary message region (`gap="4"`).
   - `<Dialog.Footer>`: Right-aligned action container (`justifyContent="flex-end"`, `gap="3"`, `pt="2"`).
   - `<Dialog.CloseTrigger>`: Dual-mode. Without children, renders the top-right X icon button. With children, renders custom action buttons.
-- **Modal Lifecycle**: Modals operate headlessly via Zag.js state machines. `<Dialog.Portal>` internally encapsulates `<Show when={dialog().open}>` and `<SolidPortal>`, guaranteeing 100% clean physical DOM teardown on ESC or dismissal with zero ghost overlays and zero signal boilerplate. Style triggers with typesafe variants (`<Dialog.Trigger variant="outline">`) or `<Button>`. NEVER pass boolean `asChild`.
+- **Modal Lifecycle**: Modals operate headlessly via Zag.js state machines. `<Dialog.Portal>` internally encapsulates `<Show when={!isServer && dialog().open}>` and `<SolidPortal>`, guaranteeing 100% clean physical DOM teardown on ESC or dismissal with zero ghost overlays and zero signal boilerplate. Style triggers with typesafe variants (`<Dialog.Trigger variant="outline">`) or `<Button>`. NEVER pass boolean `asChild`.
 
 ## 5. Backend & Data Layer: Schema 為單一真理來源 (Schema as SSOT)
 - **Ban Arbitrary API Types**: NEVER handcraft loose, arbitrary `interface Record { ... }` or `type ApiPayload = { ... }` in component or service files.
 - **Schema as Single Source of Truth**: All database tables, reducers, and RPC contracts MUST be formally defined in `src/schema/` (or generated from `spacetime generate` / `.proto`).
 - **SpacetimeDB**: Real-time client synchronization runs through WebSocket subscriptions with fine-grained Solid 2.0 store bindings. Local in-memory cache acts as fallback.
-- **ConnectRPC**: Use type-safe Connect clients (`@connectrpc/connect-web`) with schemas for microservices and third-party APIs (e.g. Stripe checkout).
+- **ConnectRPC**: Use type-safe Connect clients (`@connectrpc/connect-web`) with schemas for microservices and third-party APIs.
+
+## 6. Automated Rail Gatekeeper (`scripts/check-rails.ts`)
+The CI check enforces 12 architectural invariants:
+1. `INLINE_STYLE_FORBIDDEN`: No `style=` attributes anywhere.
+2. `HEX_COLOR_HARDCODED`: No `#hex` colors anywhere.
+3. `RAW_COLOR_FUNCTION`: No `rgb()`, `rgba()`, `hsl()`, `hsla()`, `oklch()` in `src/`.
+4. `ARBITRARY_Z_INDEX`: No numeric `zIndex` values.
+5. `MARGIN_PROP_FORBIDDEN`: Global ban on `margin`, `m`, `mt`, `mb`, `ml`, `mr`, `mx`, `my`, `marginTop`, `marginBottom`, `marginLeft`, `marginRight`, `marginInline`, `marginBlock` props.
+6. `RAW_DOM_ELEMENT_BANNED`: Outside `src/components/ui/` and `src/Document.tsx`, strictly forbid raw `<div`, `<span`, `<p`, `<h1`..`<h6`, `<button`, `<a `, `<input`, `<textarea`, `<select`, `<label`, `<hr`, `<svg`, `<table`.
+7. `ADHOC_CSS_IN_FEATURE_BANNED`: Outside `src/components/ui/`, strictly forbid importing from `"styled-system/css"`, `"styled-system/patterns"`, or `"styled-system/jsx"`.
+8. `UNSCOPED_TYPE_DEFINITION`: In `src/routes/` and `src/lib/`, forbid declaring ad-hoc `interface` or `type` definitions (all contracts and context types must live in `src/schema/` or `src/components/ui/`).
+9. `TYPE_ESCAPE_HATCH_BANNED`: Forbid `as any`, `@ts-ignore`, and `@ts-expect-error` across `src/`.
+10. `LEGACY_SOLID_API_BANNED`: Forbid legacy Solid 1.x APIs (`onMount`, `splitProps`, `mergeProps`, `createResource`, `createComputed`, `Suspense`, `SuspenseList`, `ErrorBoundary`, `Index`, `batch`, `.Provider`).
+11. `UNNAMED_REACTIVE_PRIMITIVE`: Enforce diagnostic name attribute (e.g. `{ name: "..." }`) within 4 lines on `createSignal`, `createMemo`, and `createOptimistic`.
+12. `LEGACY_TYPOGRAPHY_PROP_BANNED`: Forbid legacy props (`color=`, `fontWeight=`, `lineHeight=`, `letterSpacing=`) on `<Text>`, `<Heading>`, `<Code>`.

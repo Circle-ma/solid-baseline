@@ -11,6 +11,7 @@ export default defineConfig({
       // Default is client-rendered SPA onto a prerendered static document shell.
       // Set `ssr: true` to enable streaming server-side rendering with zero config changes.
       ssr: false,
+      diagnostics: true,
     }),
   ],
   resolve: {

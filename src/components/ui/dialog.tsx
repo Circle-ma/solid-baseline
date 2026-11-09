@@ -1,9 +1,10 @@
 import { Dialog as ArkDialog, useDialogContext } from "@ark-ui/solid/dialog";
-import { Portal as SolidPortal } from "@solidjs/web";
+import { isServer, Portal as SolidPortal } from "@solidjs/web";
 import type { ComponentProps, ParentComponent } from "solid-js";
-import { omit, Show } from "solid-js";
-import { css, cx } from "styled-system/css";
+import { Show } from "solid-js";
+import { cx } from "styled-system/css";
 import { type ButtonVariant, button, dialog } from "styled-system/recipes";
+import { omitProps, toClass } from "./tokens";
 
 export const DialogRoot = ArkDialog.Root;
 
@@ -14,7 +15,7 @@ export interface DialogTriggerProps
 }
 
 export const DialogTrigger: ParentComponent<DialogTriggerProps> = (props) => {
-  const rest = omit(props, "variant", "size", "class", "children", "style" as any);
+  const rest = omitProps(props, "variant", "size", "class", "children", "style");
   return (
     <ArkDialog.Trigger
       {...rest}
@@ -22,7 +23,7 @@ export const DialogTrigger: ParentComponent<DialogTriggerProps> = (props) => {
         props.variant || props.size
           ? button({ variant: props.variant, size: props.size })
           : undefined,
-        props.class as string,
+        toClass(props.class),
       )}
     >
       {props.children}
@@ -33,10 +34,10 @@ export const DialogTrigger: ParentComponent<DialogTriggerProps> = (props) => {
 export const DialogBackdrop: ParentComponent<
   Omit<ComponentProps<typeof ArkDialog.Backdrop>, "style">
 > = (props) => {
-  const rest = omit(props, "class", "children", "style" as any);
+  const rest = omitProps(props, "class", "children", "style");
   const styles = dialog();
   return (
-    <ArkDialog.Backdrop {...rest} class={cx(styles.backdrop, props.class as string)}>
+    <ArkDialog.Backdrop {...rest} class={cx(styles.backdrop, toClass(props.class))}>
       {props.children}
     </ArkDialog.Backdrop>
   );
@@ -45,10 +46,10 @@ export const DialogBackdrop: ParentComponent<
 export const DialogPositioner: ParentComponent<
   Omit<ComponentProps<typeof ArkDialog.Positioner>, "style">
 > = (props) => {
-  const rest = omit(props, "class", "children", "style" as any);
+  const rest = omitProps(props, "class", "children", "style");
   const styles = dialog();
   return (
-    <ArkDialog.Positioner {...rest} class={cx(styles.positioner, props.class as string)}>
+    <ArkDialog.Positioner {...rest} class={cx(styles.positioner, toClass(props.class))}>
       {props.children}
     </ArkDialog.Positioner>
   );
@@ -57,10 +58,10 @@ export const DialogPositioner: ParentComponent<
 export const DialogContent: ParentComponent<
   Omit<ComponentProps<typeof ArkDialog.Content>, "style">
 > = (props) => {
-  const rest = omit(props, "class", "children", "style" as any);
+  const rest = omitProps(props, "class", "children", "style");
   const styles = dialog();
   return (
-    <ArkDialog.Content {...rest} class={cx(styles.content, props.class as string)}>
+    <ArkDialog.Content {...rest} class={cx(styles.content, toClass(props.class))}>
       {props.children}
     </ArkDialog.Content>
   );
@@ -73,18 +74,21 @@ export interface DialogCloseTriggerProps
 }
 
 export const DialogCloseTrigger: ParentComponent<DialogCloseTriggerProps> = (props) => {
-  const rest = omit(props, "variant", "size", "class", "children", "style" as any);
+  const rest = omitProps(props, "variant", "size", "class", "children", "style");
   const styles = dialog();
+
+  const isButtonStyled = () => Boolean(props.variant || props.size || props.children);
 
   return (
     <ArkDialog.CloseTrigger
       {...rest}
       class={cx(
-        props.variant || props.size
-          ? button({ variant: props.variant, size: props.size })
+        isButtonStyled()
+          ? button({ variant: props.variant ?? "outline", size: props.size ?? "sm" })
           : styles.closeTrigger,
-        props.class as string,
+        toClass(props.class),
       )}
+      aria-label={!props.children ? (props["aria-label"] ?? "Close dialog") : props["aria-label"]}
     >
       {props.asChild
         ? undefined
@@ -100,7 +104,7 @@ export const DialogCloseTrigger: ParentComponent<DialogCloseTriggerProps> = (pro
               stroke-linejoin="round"
               aria-hidden="true"
             >
-              <path d="M11.78 3.22a.75.75 0 0 0-1.06 0L7.5 6.44 4.28 3.22a.75.75 0 0 0-1.06 1.06L8.56 7.5l3.22-3.22a.75.75 0 0 0 0-1.06Z" />
+              <path d="M11.5 3.5L3.5 11.5M3.5 3.5L11.5 11.5" />
             </svg>
           ))}
     </ArkDialog.CloseTrigger>
@@ -108,21 +112,10 @@ export const DialogCloseTrigger: ParentComponent<DialogCloseTriggerProps> = (pro
 };
 
 export const DialogHeader: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
-  const rest = omit(props, "class", "children", "style" as any);
+  const rest = omitProps(props, "class", "children", "style");
+  const styles = dialog();
   return (
-    <div
-      {...rest}
-      class={cx(
-        css({
-          display: "flex",
-          flexDirection: "column",
-          gap: "1.5",
-          w: "full",
-          pr: "8",
-        }),
-        props.class as string,
-      )}
-    >
+    <div {...rest} class={cx(styles.header, toClass(props.class))}>
       {props.children}
     </div>
   );
@@ -131,10 +124,10 @@ export const DialogHeader: ParentComponent<Omit<ComponentProps<"div">, "style">>
 export const DialogTitle: ParentComponent<Omit<ComponentProps<typeof ArkDialog.Title>, "style">> = (
   props,
 ) => {
-  const rest = omit(props, "class", "children", "style" as any);
+  const rest = omitProps(props, "class", "children", "style");
   const styles = dialog();
   return (
-    <ArkDialog.Title {...rest} class={cx(styles.title, props.class as string)}>
+    <ArkDialog.Title {...rest} class={cx(styles.title, toClass(props.class))}>
       {props.children}
     </ArkDialog.Title>
   );
@@ -143,53 +136,30 @@ export const DialogTitle: ParentComponent<Omit<ComponentProps<typeof ArkDialog.T
 export const DialogDescription: ParentComponent<
   Omit<ComponentProps<typeof ArkDialog.Description>, "style">
 > = (props) => {
-  const rest = omit(props, "class", "children", "style" as any);
+  const rest = omitProps(props, "class", "children", "style");
   const styles = dialog();
   return (
-    <ArkDialog.Description {...rest} class={cx(styles.description, props.class as string)}>
+    <ArkDialog.Description {...rest} class={cx(styles.description, toClass(props.class))}>
       {props.children}
     </ArkDialog.Description>
   );
 };
 
 export const DialogBody: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
-  const rest = omit(props, "class", "children", "style" as any);
+  const rest = omitProps(props, "class", "children", "style");
+  const styles = dialog();
   return (
-    <div
-      {...rest}
-      class={cx(
-        css({
-          display: "flex",
-          flexDirection: "column",
-          gap: "4",
-          w: "full",
-        }),
-        props.class as string,
-      )}
-    >
+    <div {...rest} class={cx(styles.body, toClass(props.class))}>
       {props.children}
     </div>
   );
 };
 
 export const DialogFooter: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
-  const rest = omit(props, "class", "children", "style" as any);
+  const rest = omitProps(props, "class", "children", "style");
+  const styles = dialog();
   return (
-    <div
-      {...rest}
-      class={cx(
-        css({
-          display: "flex",
-          flexDirection: "row",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          gap: "3",
-          w: "full",
-          pt: "2",
-        }),
-        props.class as string,
-      )}
-    >
+    <div {...rest} class={cx(styles.footer, toClass(props.class))}>
       {props.children}
     </div>
   );
@@ -200,7 +170,7 @@ export type DialogPortalProps = ComponentProps<typeof SolidPortal>;
 export const DialogPortal: ParentComponent<DialogPortalProps> = (props) => {
   const dialogContext = useDialogContext();
   return (
-    <Show when={dialogContext().open}>
+    <Show when={!isServer && dialogContext().open}>
       <SolidPortal {...props}>{props.children}</SolidPortal>
     </Show>
   );

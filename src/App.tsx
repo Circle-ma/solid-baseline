@@ -1,7 +1,18 @@
-import { createRouter, defineRoute, defineRoutes, useLocation } from "@solidjs/router";
-import { css } from "styled-system/css";
+import { createRouter, defineRoute, defineRoutes } from "@solidjs/router";
 import "./index.css";
-import { Badge, Box, Container, Divider, Heading, HStack, Text, VStack } from "~/components/ui";
+import {
+  AsyncBoundary,
+  Badge,
+  Box,
+  Container,
+  Divider,
+  Heading,
+  HStack,
+  NavLink,
+  Text,
+  VStack,
+} from "~/components/ui";
+import { TelemetryProvider } from "~/lib";
 import Overview from "~/routes/overview";
 import Realtime from "~/routes/realtime";
 
@@ -18,44 +29,11 @@ export const routes = defineRoutes([
 
 export const Router = createRouter({ routes });
 
-const navLinkClass = css({
-  textDecoration: "none",
-  color: "inherit",
-  cursor: "pointer",
-  display: "inline-flex",
-});
-
 function NavigationBar() {
-  const location = useLocation();
-
   return (
     <HStack gap="1" p="1" bg="bg.subtle" borderRadius="md" w="fit">
-      <a href="/" class={navLinkClass}>
-        <Box
-          px="3"
-          py="1.5"
-          borderRadius="sm"
-          bg={location.pathname === "/" ? "bg.default" : "transparent"}
-          color={location.pathname === "/" ? "fg.default" : "fg.muted"}
-        >
-          <Text size="xs" fontWeight={location.pathname === "/" ? "semibold" : "normal"}>
-            Overview & Primitives
-          </Text>
-        </Box>
-      </a>
-      <a href="/realtime" class={navLinkClass}>
-        <Box
-          px="3"
-          py="1.5"
-          borderRadius="sm"
-          bg={location.pathname === "/realtime" ? "bg.default" : "transparent"}
-          color={location.pathname === "/realtime" ? "fg.default" : "fg.muted"}
-        >
-          <Text size="xs" fontWeight={location.pathname === "/realtime" ? "semibold" : "normal"}>
-            Realtime & Telemetry
-          </Text>
-        </Box>
-      </a>
+      <NavLink href="/">Overview & Primitives</NavLink>
+      <NavLink href="/realtime">Realtime & Telemetry</NavLink>
     </HStack>
   );
 }
@@ -77,14 +55,14 @@ export default function App() {
               <VStack gap="3" alignItems="stretch">
                 <HStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="4">
                   <HStack gap="3" alignItems="center" flexWrap="wrap">
-                    <Heading as="h1" size="2xl" letterSpacing="tight">
+                    <Heading as="h1" size="2xl" tracking="tight">
                       Solid 2.0 Baseline Architecture
                     </Heading>
                     <Badge variant="subtle">2026 Core</Badge>
                   </HStack>
                   <NavigationBar />
                 </HStack>
-                <Text size="sm" color="fg.muted" lineHeight="relaxed">
+                <Text size="sm" tone="muted" leading="relaxed">
                   High-performance, type-safe SPA starter engineered with Bun, Vite, Solid 2.0,
                   Solid Router, Ark UI, Panda CSS, SpacetimeDB, ConnectRPC, Oxlint, and Biome.
                 </Text>
@@ -92,17 +70,19 @@ export default function App() {
 
               <Divider borderColor="border.subtle" />
 
-              {/* Routed Page View */}
-              {props.children}
+              {/* Routed Page View inside SSR-Safe Telemetry Provider & Async Boundary */}
+              <TelemetryProvider>
+                <AsyncBoundary>{props.children}</AsyncBoundary>
+              </TelemetryProvider>
 
               <Divider borderColor="border.subtle" />
 
               {/* Footer */}
               <HStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="3">
-                <Text size="xs" color="fg.muted">
+                <Text size="xs" tone="muted">
                   Systematic UI Primitives · Solid Router 2.0 · Container Layout · Schema SSOT
                 </Text>
-                <Text size="xs" color="fg.muted">
+                <Text size="xs" tone="muted">
                   Verified with Oxlint & Biome
                 </Text>
               </HStack>

@@ -1,30 +1,32 @@
 import { Dynamic } from "@solidjs/web";
 import type { ComponentProps, ParentComponent } from "solid-js";
-import { omit } from "solid-js";
-import { css, cx } from "styled-system/css";
+import { cx } from "styled-system/css";
 import { type TextVariant, text } from "styled-system/recipes";
-import type { SystemProperties } from "styled-system/types/system";
-import type { ColorToken } from "./tokens";
+import { omitProps, toClass } from "./tokens";
 
 export interface HeadingProps extends Omit<ComponentProps<"h2">, "style"> {
   as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
   size?: TextVariant["size"];
-  letterSpacing?: SystemProperties["letterSpacing"];
-  fontWeight?: SystemProperties["fontWeight"];
-  color?: ColorToken;
+  tone?: TextVariant["tone"];
+  weight?: TextVariant["weight"];
+  leading?: TextVariant["leading"];
+  tracking?: TextVariant["tracking"];
+  tabular?: boolean;
 }
 
 export const Heading: ParentComponent<HeadingProps> = (props) => {
-  const rest = omit(
+  const rest = omitProps(
     props,
     "as",
     "size",
-    "letterSpacing",
-    "fontWeight",
-    "color",
+    "tone",
+    "weight",
+    "leading",
+    "tracking",
+    "tabular",
     "class",
     "children",
-    "style" as any,
+    "style",
   );
   return (
     <Dynamic
@@ -34,13 +36,13 @@ export const Heading: ParentComponent<HeadingProps> = (props) => {
         text({
           variant: "heading",
           size: props.size ?? "xl",
+          tone: props.tone,
+          weight: props.weight,
+          leading: props.leading,
+          tracking: props.tracking,
+          tabular: props.tabular,
         }),
-        css({
-          letterSpacing: props.letterSpacing,
-          fontWeight: props.fontWeight,
-          color: props.color,
-        }),
-        props.class as string,
+        toClass(props.class),
       )}
     >
       {props.children}
@@ -51,22 +53,26 @@ export const Heading: ParentComponent<HeadingProps> = (props) => {
 export interface TextProps extends Omit<ComponentProps<"p">, "style"> {
   as?: "p" | "span" | "label" | "div";
   size?: TextVariant["size"];
-  color?: ColorToken;
-  fontWeight?: SystemProperties["fontWeight"];
-  lineHeight?: SystemProperties["lineHeight"];
+  tone?: TextVariant["tone"];
+  weight?: TextVariant["weight"];
+  leading?: TextVariant["leading"];
+  tracking?: TextVariant["tracking"];
+  tabular?: boolean;
 }
 
 export const Text: ParentComponent<TextProps> = (props) => {
-  const rest = omit(
+  const rest = omitProps(
     props,
     "as",
     "size",
-    "color",
-    "fontWeight",
-    "lineHeight",
+    "tone",
+    "weight",
+    "leading",
+    "tracking",
+    "tabular",
     "class",
     "children",
-    "style" as any,
+    "style",
   );
   return (
     <Dynamic
@@ -76,13 +82,13 @@ export const Text: ParentComponent<TextProps> = (props) => {
         text({
           variant: "body",
           size: props.size ?? "md",
+          tone: props.tone,
+          weight: props.weight,
+          leading: props.leading,
+          tracking: props.tracking,
+          tabular: props.tabular,
         }),
-        css({
-          color: props.color,
-          fontWeight: props.fontWeight,
-          lineHeight: props.lineHeight,
-        }),
-        props.class as string,
+        toClass(props.class),
       )}
     >
       {props.children}
@@ -92,11 +98,12 @@ export const Text: ParentComponent<TextProps> = (props) => {
 
 export interface CodeProps extends Omit<ComponentProps<"code">, "style"> {
   size?: TextVariant["size"];
-  color?: ColorToken;
+  tone?: TextVariant["tone"];
+  tabular?: boolean;
 }
 
 export const Code: ParentComponent<CodeProps> = (props) => {
-  const rest = omit(props, "size", "color", "class", "children", "style" as any);
+  const rest = omitProps(props, "size", "tone", "tabular", "class", "children", "style");
   return (
     <code
       {...rest}
@@ -104,9 +111,10 @@ export const Code: ParentComponent<CodeProps> = (props) => {
         text({
           variant: "code",
           size: props.size ?? "sm",
+          tone: props.tone,
+          tabular: props.tabular,
         }),
-        props.color ? css({ color: props.color }) : undefined,
-        props.class as string,
+        toClass(props.class),
       )}
     >
       {props.children}

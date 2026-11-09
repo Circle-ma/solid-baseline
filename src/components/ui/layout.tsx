@@ -1,9 +1,17 @@
 import type { ComponentProps, ParentComponent } from "solid-js";
-import { omit } from "solid-js";
 import { cx } from "styled-system/css";
 import { box, container, divider, grid, hstack, vstack } from "styled-system/patterns";
 import type { ConditionalValue, SystemProperties } from "styled-system/types/system";
-import type { ColorToken } from "./tokens";
+import {
+  type BorderColorToken,
+  type ForegroundToken,
+  omitProps,
+  type RadiusRailToken,
+  type SpacingRailToken,
+  type SurfaceToken,
+  toClass,
+  type ZIndexRailToken,
+} from "./tokens";
 
 export interface BoxProps extends Omit<ComponentProps<"div">, "style"> {
   position?: SystemProperties["position"];
@@ -12,22 +20,22 @@ export interface BoxProps extends Omit<ComponentProps<"div">, "style"> {
   left?: SystemProperties["left"];
   right?: SystemProperties["right"];
   inset?: SystemProperties["inset"];
-  zIndex?: SystemProperties["zIndex"];
+  zIndex?: ConditionalValue<ZIndexRailToken>;
   minH?: SystemProperties["minHeight"];
   maxH?: SystemProperties["maxHeight"];
   minW?: SystemProperties["minWidth"];
   maxW?: SystemProperties["maxWidth"];
   w?: SystemProperties["width"];
   h?: SystemProperties["height"];
-  bg?: SystemProperties["backgroundColor"];
-  color?: SystemProperties["color"];
-  p?: SystemProperties["padding"];
-  px?: SystemProperties["paddingInline"];
-  py?: SystemProperties["paddingBlock"];
+  bg?: ConditionalValue<SurfaceToken>;
+  color?: ConditionalValue<ForegroundToken>;
+  p?: ConditionalValue<SpacingRailToken>;
+  px?: ConditionalValue<SpacingRailToken>;
+  py?: ConditionalValue<SpacingRailToken>;
   borderWidth?: SystemProperties["borderWidth"];
   borderStyle?: SystemProperties["borderStyle"];
-  borderColor?: SystemProperties["borderColor"];
-  borderRadius?: SystemProperties["borderRadius"];
+  borderColor?: ConditionalValue<BorderColorToken>;
+  borderRadius?: ConditionalValue<RadiusRailToken>;
   overflow?: SystemProperties["overflow"];
   overflowX?: SystemProperties["overflowX"];
   overflowY?: SystemProperties["overflowY"];
@@ -39,7 +47,7 @@ export interface BoxProps extends Omit<ComponentProps<"div">, "style"> {
 }
 
 export const Box: ParentComponent<BoxProps> = (props) => {
-  const rest = omit(
+  const rest = omitProps(
     props,
     "position",
     "top",
@@ -73,7 +81,7 @@ export const Box: ParentComponent<BoxProps> = (props) => {
     "flexShrink",
     "class",
     "children",
-    "style" as any,
+    "style",
   );
   return (
     <div
@@ -112,7 +120,7 @@ export const Box: ParentComponent<BoxProps> = (props) => {
           flexShrink: props.flexShrink,
           boxSizing: "border-box",
         }),
-        props.class as string,
+        toClass(props.class),
       )}
     >
       {props.children}
@@ -122,13 +130,13 @@ export const Box: ParentComponent<BoxProps> = (props) => {
 
 export interface ContainerProps extends Omit<ComponentProps<"div">, "style"> {
   maxW?: SystemProperties["maxWidth"];
-  p?: SystemProperties["padding"];
-  px?: SystemProperties["paddingInline"];
-  py?: SystemProperties["paddingBlock"];
+  p?: ConditionalValue<SpacingRailToken>;
+  px?: ConditionalValue<SpacingRailToken>;
+  py?: ConditionalValue<SpacingRailToken>;
 }
 
 export const Container: ParentComponent<ContainerProps> = (props) => {
-  const rest = omit(props, "maxW", "p", "px", "py", "class", "children", "style" as any);
+  const rest = omitProps(props, "maxW", "p", "px", "py", "class", "children", "style");
   return (
     <div
       {...rest}
@@ -140,7 +148,7 @@ export const Container: ParentComponent<ContainerProps> = (props) => {
           py: props.py,
           w: "full",
         }),
-        props.class as string,
+        toClass(props.class),
       )}
     >
       {props.children}
@@ -149,11 +157,11 @@ export const Container: ParentComponent<ContainerProps> = (props) => {
 };
 
 export interface VStackProps extends Omit<ComponentProps<"div">, "style"> {
-  gap?: SystemProperties["gap"];
+  gap?: ConditionalValue<SpacingRailToken>;
   alignItems?: SystemProperties["alignItems"];
   justifyContent?: SystemProperties["justifyContent"];
   position?: SystemProperties["position"];
-  zIndex?: SystemProperties["zIndex"];
+  zIndex?: ConditionalValue<ZIndexRailToken>;
   minH?: SystemProperties["minHeight"];
   maxH?: SystemProperties["maxHeight"];
   h?: SystemProperties["height"];
@@ -165,13 +173,13 @@ export interface VStackProps extends Omit<ComponentProps<"div">, "style"> {
   overflowY?: SystemProperties["overflowY"];
   borderWidth?: SystemProperties["borderWidth"];
   borderStyle?: SystemProperties["borderStyle"];
-  borderColor?: SystemProperties["borderColor"];
-  borderRadius?: SystemProperties["borderRadius"];
-  p?: SystemProperties["padding"];
-  px?: SystemProperties["paddingInline"];
-  py?: SystemProperties["paddingBlock"];
-  bg?: SystemProperties["backgroundColor"];
-  color?: SystemProperties["color"];
+  borderColor?: ConditionalValue<BorderColorToken>;
+  borderRadius?: ConditionalValue<RadiusRailToken>;
+  p?: ConditionalValue<SpacingRailToken>;
+  px?: ConditionalValue<SpacingRailToken>;
+  py?: ConditionalValue<SpacingRailToken>;
+  bg?: ConditionalValue<SurfaceToken>;
+  color?: ConditionalValue<ForegroundToken>;
   boxShadow?: SystemProperties["boxShadow"];
   flex?: SystemProperties["flex"];
   flexGrow?: SystemProperties["flexGrow"];
@@ -179,7 +187,7 @@ export interface VStackProps extends Omit<ComponentProps<"div">, "style"> {
 }
 
 export const VStack: ParentComponent<VStackProps> = (props) => {
-  const rest = omit(
+  const rest = omitProps(
     props,
     "gap",
     "alignItems",
@@ -210,7 +218,7 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
     "flexShrink",
     "class",
     "children",
-    "style" as any,
+    "style",
   );
   return (
     <div
@@ -245,7 +253,7 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
           flexGrow: props.flexGrow,
           flexShrink: props.flexShrink,
         }),
-        props.class as string,
+        toClass(props.class),
       )}
     >
       {props.children}
@@ -254,11 +262,11 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
 };
 
 export interface HStackProps extends Omit<ComponentProps<"div">, "style"> {
-  gap?: SystemProperties["gap"];
+  gap?: ConditionalValue<SpacingRailToken>;
   alignItems?: SystemProperties["alignItems"];
   justifyContent?: SystemProperties["justifyContent"];
   position?: SystemProperties["position"];
-  zIndex?: SystemProperties["zIndex"];
+  zIndex?: ConditionalValue<ZIndexRailToken>;
   minH?: SystemProperties["minHeight"];
   maxH?: SystemProperties["maxHeight"];
   h?: SystemProperties["height"];
@@ -271,13 +279,13 @@ export interface HStackProps extends Omit<ComponentProps<"div">, "style"> {
   overflowY?: SystemProperties["overflowY"];
   borderWidth?: SystemProperties["borderWidth"];
   borderStyle?: SystemProperties["borderStyle"];
-  borderColor?: SystemProperties["borderColor"];
-  borderRadius?: SystemProperties["borderRadius"];
-  p?: SystemProperties["padding"];
-  px?: SystemProperties["paddingInline"];
-  py?: SystemProperties["paddingBlock"];
-  bg?: SystemProperties["backgroundColor"];
-  color?: SystemProperties["color"];
+  borderColor?: ConditionalValue<BorderColorToken>;
+  borderRadius?: ConditionalValue<RadiusRailToken>;
+  p?: ConditionalValue<SpacingRailToken>;
+  px?: ConditionalValue<SpacingRailToken>;
+  py?: ConditionalValue<SpacingRailToken>;
+  bg?: ConditionalValue<SurfaceToken>;
+  color?: ConditionalValue<ForegroundToken>;
   boxShadow?: SystemProperties["boxShadow"];
   flex?: SystemProperties["flex"];
   flexGrow?: SystemProperties["flexGrow"];
@@ -285,7 +293,7 @@ export interface HStackProps extends Omit<ComponentProps<"div">, "style"> {
 }
 
 export const HStack: ParentComponent<HStackProps> = (props) => {
-  const rest = omit(
+  const rest = omitProps(
     props,
     "gap",
     "alignItems",
@@ -317,7 +325,7 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
     "flexShrink",
     "class",
     "children",
-    "style" as any,
+    "style",
   );
   return (
     <div
@@ -353,7 +361,7 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
           flexGrow: props.flexGrow,
           flexShrink: props.flexShrink,
         }),
-        props.class as string,
+        toClass(props.class),
       )}
     >
       {props.children}
@@ -363,20 +371,20 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
 
 export interface GridProps extends Omit<ComponentProps<"div">, "style"> {
   columns?: ConditionalValue<number>;
-  gap?: SystemProperties["gap"];
-  rowGap?: SystemProperties["rowGap"];
-  columnGap?: SystemProperties["columnGap"];
+  gap?: ConditionalValue<SpacingRailToken>;
+  rowGap?: ConditionalValue<SpacingRailToken>;
+  columnGap?: ConditionalValue<SpacingRailToken>;
   alignItems?: SystemProperties["alignItems"];
   justifyContent?: SystemProperties["justifyContent"];
   w?: SystemProperties["width"];
   minH?: SystemProperties["minHeight"];
-  p?: SystemProperties["padding"];
-  px?: SystemProperties["paddingInline"];
-  py?: SystemProperties["paddingBlock"];
+  p?: ConditionalValue<SpacingRailToken>;
+  px?: ConditionalValue<SpacingRailToken>;
+  py?: ConditionalValue<SpacingRailToken>;
 }
 
 export const Grid: ParentComponent<GridProps> = (props) => {
-  const rest = omit(
+  const rest = omitProps(
     props,
     "columns",
     "gap",
@@ -391,7 +399,7 @@ export const Grid: ParentComponent<GridProps> = (props) => {
     "py",
     "class",
     "children",
-    "style" as any,
+    "style",
   );
   return (
     <div
@@ -410,7 +418,7 @@ export const Grid: ParentComponent<GridProps> = (props) => {
           px: props.px,
           py: props.py,
         }),
-        props.class as string,
+        toClass(props.class),
       )}
     >
       {props.children}
@@ -421,12 +429,12 @@ export const Grid: ParentComponent<GridProps> = (props) => {
 export interface DividerProps extends Omit<ComponentProps<"hr">, "style"> {
   orientation?: "horizontal" | "vertical";
   thickness?: SystemProperties["borderWidth"];
-  color?: ColorToken;
-  borderColor?: ColorToken;
+  color?: BorderColorToken;
+  borderColor?: BorderColorToken;
 }
 
 export const Divider: ParentComponent<DividerProps> = (props) => {
-  const rest = omit(
+  const rest = omitProps(
     props,
     "orientation",
     "thickness",
@@ -434,7 +442,7 @@ export const Divider: ParentComponent<DividerProps> = (props) => {
     "borderColor",
     "class",
     "children",
-    "style" as any,
+    "style",
   );
   return (
     <hr
@@ -445,7 +453,7 @@ export const Divider: ParentComponent<DividerProps> = (props) => {
           thickness: props.thickness ?? "1px",
           color: props.borderColor ?? props.color ?? "border.subtle",
         }),
-        props.class as string,
+        toClass(props.class),
       )}
     />
   );

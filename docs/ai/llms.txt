@@ -11,7 +11,7 @@
 - Styling: Panda CSS with `strictTokens: true` & `strictPropertyValues: true`
 - Realtime Database: SpacetimeDB 2.x
 - RPC Transport: ConnectRPC
-- Lint & Format: Oxlint, Biome 2.6, and Architectural Rails Validator (`scripts/check-rails.ts`)
+- Lint & Format: Oxlint, Biome 2.6, and Architectural Rails Validator (12 Invariants via `scripts/check-rails.ts`)
 
 ## Design System Rails (鋪鐵軌而非設陷阱)
 1. **Zero Inline Styles & Zero Magic Numbers**:
@@ -23,9 +23,13 @@
 3. **Compound Invariants**:
    - `<Card.Root>` and `<Dialog.Content>` encapsulate their own padding, gaps, and borders.
 4. **Typography & Primitives First**:
-   - Never use raw `<p>`, `<span>`, `<h1>`, or `<button>`. Use `<Heading>`, `<Text>`, `<Code>`, `<Button>`, and `<Badge>`.
+   - Never use raw `<p>`, `<span>`, `<h1>`, or `<button>`. Use Systematic UI primitives (`<Heading>`, `<Text>`, `<Code>`, `<Button>`, `<Badge>`, `<Input>`, `<NavLink>`, `<AsyncBoundary>`, `<Card>`, `<Dialog>`).
 5. **Schema SSOT**:
    - All database, reducer, and API types derive from `src/schema/`.
+6. **Zero Type Escape Hatches**:
+   - `as any`, `@ts-ignore`, and `@ts-expect-error` are strictly banned.
+7. **Diagnostic Signal Attribution**:
+   - Always name reactive primitives: `createSignal(val, { name: "..." })`, `createMemo(fn, { name: "..." })`.
 
 ## Deep-Dive Knowledge Links
 - [Panda CSS 2.4 Design System Guide](docs/ai/llms-panda-css.txt)

@@ -1,7 +1,7 @@
 import type { ComponentProps, ParentComponent } from "solid-js";
-import { omit } from "solid-js";
 import { cx } from "styled-system/css";
 import { type ButtonVariant, button } from "styled-system/recipes";
+import { omitProps, toClass } from "./tokens";
 
 export interface ButtonProps extends Omit<ComponentProps<"button">, "style"> {
   variant?: ButtonVariant["variant"];
@@ -15,7 +15,7 @@ export interface ButtonProps extends Omit<ComponentProps<"button">, "style"> {
  * Strictly bounded by design tokens. Inline `style` is forbidden at compile time.
  */
 export const Button: ParentComponent<ButtonProps> = (props) => {
-  const rest = omit(props, "variant", "size", "class", "children", "type", "style" as any);
+  const rest = omitProps(props, "variant", "size", "class", "children", "type", "style");
   return (
     <button
       type={props.type ?? "button"}
@@ -25,7 +25,7 @@ export const Button: ParentComponent<ButtonProps> = (props) => {
           variant: props.variant,
           size: props.size,
         }),
-        props.class as string,
+        toClass(props.class),
       )}
     >
       {props.children}

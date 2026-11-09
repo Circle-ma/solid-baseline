@@ -1,9 +1,12 @@
 import { createMemo, createSignal } from "solid-js";
-import { Button, Card, Dialog, Grid, HStack, Text, VStack } from "~/components/ui";
+import { Button, Card, Dialog, Grid, HStack, Input, Text, VStack } from "~/components/ui";
 
 export default function Overview() {
-  const [count, setCount] = createSignal(0);
-  const double = createMemo(() => count() * 2);
+  const [count, setCount] = createSignal(0, { name: "counter-value" });
+  const double = createMemo(() => count() * 2, { name: "counter-double" });
+  const [inputText, setInputText] = createSignal("Solid 2.0 Paved Path", {
+    name: "overview-input-text",
+  });
 
   return (
     <VStack gap="6" alignItems="stretch">
@@ -26,18 +29,18 @@ export default function Overview() {
                 borderRadius="l2"
               >
                 <VStack gap="1" alignItems="flex-start">
-                  <Text size="xs" color="fg.muted">
+                  <Text size="xs" tone="muted">
                     COUNTER SIGNAL
                   </Text>
-                  <Text size="2xl" fontWeight="bold">
+                  <Text size="2xl" weight="bold" tabular>
                     {count()}
                   </Text>
                 </VStack>
                 <VStack gap="1" alignItems="flex-end">
-                  <Text size="xs" color="fg.muted">
+                  <Text size="xs" tone="muted">
                     DERIVED MEMO (2x)
                   </Text>
-                  <Text size="2xl" fontWeight="bold" color="accent.default">
+                  <Text size="2xl" weight="bold" tone="accent" tabular>
                     {double()}
                   </Text>
                 </VStack>
@@ -54,6 +57,25 @@ export default function Overview() {
                   Reset
                 </Button>
               </HStack>
+
+              <VStack gap="2" alignItems="stretch" py="1">
+                <Text size="xs" tone="muted">
+                  DRAFT-SYNCHRONIZED INPUT PRIMITIVE
+                </Text>
+                <Input
+                  value={inputText()}
+                  onValueChange={setInputText}
+                  placeholder="Type to test draft synchronization..."
+                />
+                <HStack gap="2" alignItems="center">
+                  <Text size="xs" tone="muted">
+                    State Echo:
+                  </Text>
+                  <Text size="xs" weight="medium">
+                    {inputText()}
+                  </Text>
+                </HStack>
+              </VStack>
             </VStack>
           </Card.Body>
         </Card.Root>
@@ -68,7 +90,7 @@ export default function Overview() {
           </Card.Header>
           <Card.Body>
             <VStack gap="4" alignItems="flex-start">
-              <Text size="sm" color="fg.muted">
+              <Text size="sm" tone="muted">
                 Triggers are polymorphic elements. Autonomous physical DOM teardown on ESC or
                 dismissal with zero ghost overlays.
               </Text>
@@ -95,6 +117,12 @@ export default function Overview() {
                           This modal encapsulates container padding, responsive max-width, focus
                           restoration, and keyboard Escape dismissal.
                         </Text>
+                        <VStack gap="2" alignItems="stretch" py="1">
+                          <Text size="xs" tone="muted">
+                            Interactive Dialog Input
+                          </Text>
+                          <Input size="sm" placeholder="Modal encapsulated input..." />
+                        </VStack>
                       </Dialog.Body>
 
                       <Dialog.Footer>

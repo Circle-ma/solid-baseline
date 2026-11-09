@@ -14,5 +14,13 @@
 5. **Draft Stores**:
    - `setStore(draft => { draft.user.name = "New Name"; });`
    - No `produce` wrapper needed.
-6. **Optimistic Updates**:
-   - Use `createOptimisticStore(() => api.list(), [])` or `action(...)` primitives.
+6. **Optimistic Updates & Actions**:
+   - In transition handlers, use `createOptimistic(false, { name: "..." })` and `action(function* () { ... })` to immediately acknowledge the hold before the first `yield`.
+7. **Diagnostic Signal Attribution**:
+   - Always name reactive primitives: `createSignal(0, { name: "count" })`, `createMemo(fn, { name: "double" })`.
+8. **SSR-Safe Context & State**:
+   - Never declare module-scope mutable signals or stores. Mount state via Context Providers (`<Context value={...}>` + `useContext(Context)`).
+9. **Deterministic Hydration**:
+   - Use deterministic seed values during initial server rendering. Generate dynamic client values only inside `onSettled` or actions.
+10. **Prop Forwarding**:
+    - Use `omitProps(props, "class", "children", "style")` from `~/components/ui/tokens` instead of manual splitting or casting `"style" as any`.

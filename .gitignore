@@ -12,6 +12,7 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+repomix-output.*
 
 # Environment variables
 .env

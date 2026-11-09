@@ -1,28 +1,4 @@
-import type {
-  ColorToken,
-  FontSizeToken,
-  FontWeightToken,
-  LetterSpacingToken,
-  LineHeightToken,
-  RadiusToken,
-  ShadowToken,
-  SizeToken,
-  SpacingToken,
-  ZIndexToken,
-} from "styled-system/types/tokens";
-
-export type {
-  ColorToken,
-  FontSizeToken,
-  FontWeightToken,
-  LetterSpacingToken,
-  LineHeightToken,
-  RadiusToken,
-  ShadowToken,
-  SizeToken,
-  SpacingToken,
-  ZIndexToken,
-};
+import { omit } from "solid-js";
 
 /**
  * Standard 4px / 8px Spacing Grid Rail
@@ -45,16 +21,32 @@ export const SPACING_SCALE = [
   "20", // 80px
 ] as const;
 
+export type SpacingRailToken = (typeof SPACING_SCALE)[number];
+
 /**
  * Canonical Semantic Surfaces
  */
 export const SURFACES = {
   canvas: "bg.canvas",
   default: "bg.default",
+  elevated: "bg.elevated",
   subtle: "bg.subtle",
   muted: "bg.muted",
   backdrop: "bg.backdrop",
 } as const;
+
+export type SurfaceToken =
+  | "transparent"
+  | "bg.canvas"
+  | "bg.default"
+  | "bg.elevated"
+  | "bg.subtle"
+  | "bg.muted"
+  | "bg.backdrop"
+  | "success.subtle"
+  | "danger.subtle"
+  | "warning.subtle"
+  | "info.subtle";
 
 /**
  * Canonical Semantic Foregrounds
@@ -65,6 +57,17 @@ export const FOREGROUNDS = {
   subtle: "fg.subtle",
 } as const;
 
+export type ForegroundToken =
+  | "fg.default"
+  | "fg.muted"
+  | "fg.subtle"
+  | "accent.default"
+  | "accent.fg"
+  | "success.text"
+  | "danger.text"
+  | "warning.text"
+  | "info.text";
+
 /**
  * Canonical Semantic Borders
  */
@@ -72,6 +75,19 @@ export const BORDERS = {
   subtle: "border.subtle",
   default: "border.default",
 } as const;
+
+export type BorderColorToken =
+  | "border.subtle"
+  | "border.default"
+  | "success.border"
+  | "danger.border"
+  | "warning.border"
+  | "info.border";
+
+/**
+ * Concentric Radii Scale
+ */
+export type RadiusRailToken = "none" | "sm" | "md" | "l1" | "l2" | "l3" | "full";
 
 /**
  * Canonical Semantic Accents
@@ -141,3 +157,25 @@ export const Z_INDEX = {
   tooltip: "tooltip", // 1700
   max: "max", // 9999
 } as const;
+
+export type ZIndexRailToken = (typeof Z_INDEX)[keyof typeof Z_INDEX];
+
+/**
+ * Safe class extractor that converts Solid JSX class values to string | undefined for cx.
+ */
+export function toClass(cls: unknown): string | undefined {
+  if (!cls) return undefined;
+  if (typeof cls === "string") return cls;
+  return undefined;
+}
+
+/**
+ * Type-safe property omission helper that strips specified keys (including "style")
+ * without requiring unsafe type escape hatches.
+ */
+export function omitProps<T extends object, K extends readonly (keyof T | "style")[]>(
+  props: T,
+  ...keys: K
+): Omit<T, K[number]> {
+  return (omit as (...args: unknown[]) => Omit<T, K[number]>)(props, ...keys);
+}

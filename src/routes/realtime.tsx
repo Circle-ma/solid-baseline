@@ -1,18 +1,13 @@
-import { For, Show } from "solid-js";
+import { createMemo, For, Show } from "solid-js";
 import { Badge, Button, Card, Code, HStack, Text, VStack } from "~/components/ui";
-import { checkSystemHealth, isRpcPending, rpcLatencyMs, rpcResponse } from "~/lib/connect";
-import {
-  callReducer,
-  clearRecords,
-  clientIdentity,
-  connectionMode,
-  isConnected,
-  latencyMs,
-  records,
-  toggleSimulationMode,
-} from "~/lib/spacetime";
+import { useTelemetry } from "~/lib";
 
 export default function Realtime() {
+  const telemetry = useTelemetry();
+  const rpcStatus = createMemo(() => telemetry.rpcResponse()?.status ?? null, {
+    name: "rpc-status",
+  });
+
   return (
     <VStack gap="6" alignItems="stretch">
       {/* SpacetimeDB Realtime Engine */}
@@ -26,11 +21,11 @@ export default function Realtime() {
               </Card.Description>
             </VStack>
             <HStack gap="2" alignItems="center">
-              <Badge variant="subtle" intent={isConnected() ? "success" : "warning"}>
-                {connectionMode() === "live" ? "Live WebSocket" : "Reactive Local Cache"}
+              <Badge variant="subtle" intent={telemetry.isConnected() ? "success" : "warning"}>
+                {telemetry.connectionMode() === "live" ? "Live WebSocket" : "Reactive Local Cache"}
               </Badge>
               <Badge variant="outline" intent="default">
-                {clientIdentity()}
+                {telemetry.clientIdentity()}
               </Badge>
             </HStack>
           </HStack>
@@ -46,33 +41,37 @@ export default function Realtime() {
               borderRadius="l2"
             >
               <HStack gap="4" alignItems="center">
-                <Text size="xs" color="fg.muted">
+                <Text size="xs" tone="muted">
                   RECORDS:{" "}
-                  <Text as="span" fontWeight="bold" color="fg.default">
-                    {records.length}
+                  <Text as="span" weight="bold" tone="default" tabular>
+                    {telemetry.records.length}
                   </Text>
                 </Text>
-                <Show when={latencyMs() !== null}>
-                  <Text size="xs" color="accent.default">
+                <Show when={telemetry.latencyMs() !== null}>
+                  <Text size="xs" tone="accent">
                     LATENCY:{" "}
-                    <Text as="span" fontWeight="bold">
-                      {latencyMs()}ms
+                    <Text as="span" weight="bold" tabular>
+                      {telemetry.latencyMs()}ms
                     </Text>
                   </Text>
                 </Show>
               </HStack>
               <HStack gap="2">
-                <Button variant="outline" size="sm" onClick={() => toggleSimulationMode()}>
-                  {isConnected() ? "Disconnect" : "Simulate Live"}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => telemetry.toggleSimulationMode()}
+                >
+                  {telemetry.isConnected() ? "Disconnect" : "Simulate Live"}
                 </Button>
-                <Button variant="danger" size="sm" onClick={() => clearRecords()}>
+                <Button variant="danger" size="sm" onClick={() => telemetry.clearRecords()}>
                   Clear Store
                 </Button>
                 <Button
                   variant="solid"
                   size="sm"
                   onClick={() =>
-                    callReducer({
+                    telemetry.callReducer({
                       action: "TX_EVENT",
                       payload: `Mutation @ ${new Date().toLocaleTimeString()}`,
                     })
@@ -94,7 +93,14 @@ export default function Realtime() {
               borderRadius="l2"
               p="2"
             >
-              <For each={records}>
+              <For
+                each={telemetry.records}
+                fallback={
+                  <Text size="xs" tone="muted">
+                    No event records in store. Dispatch a reducer to populate.
+                  </Text>
+                }
+              >
                 {(record) => (
                   <HStack
                     justifyContent="space-between"
@@ -110,11 +116,11 @@ export default function Realtime() {
                       <Badge variant="outline" intent="default" size="sm">
                         {record.action}
                       </Badge>
-                      <Text size="xs" fontWeight="medium" color="fg.default">
+                      <Text size="xs" weight="medium" tone="default">
                         {record.payload}
                       </Text>
                     </HStack>
-                    <Code size="xs" color="fg.muted">
+                    <Code size="xs" tone="muted" tabular>
                       {record.timestamp}
                     </Code>
                   </HStack>
@@ -137,15 +143,9 @@ export default function Realtime() {
             </VStack>
             <Badge
               variant="subtle"
-              intent={
-                rpcResponse()?.status === "SERVING"
-                  ? "success"
-                  : rpcResponse()
-                    ? "danger"
-                    : "default"
-              }
+              intent={rpcStatus() === "SERVING" ? "success" : rpcStatus() ? "danger" : "default"}
             >
-              {rpcResponse() ? `Status: ${rpcResponse()?.status}` : "Uncalled"}
+              {rpcStatus() ? `Status: ${rpcStatus()}` : "Uncalled"}
             </Badge>
           </HStack>
         </Card.Header>
@@ -160,17 +160,17 @@ export default function Realtime() {
               borderRadius="l2"
             >
               <HStack gap="4" alignItems="center">
-                <Text size="xs" color="fg.muted">
+                <Text size="xs" tone="muted">
                   SERVICE:{" "}
-                  <Text as="span" fontWeight="bold" color="fg.default">
+                  <Text as="span" weight="bold" tone="default">
                     system.v1.SystemService
                   </Text>
                 </Text>
-                <Show when={rpcLatencyMs() !== null}>
-                  <Text size="xs" color="accent.default">
+                <Show when={telemetry.rpcLatencyMs() !== null}>
+                  <Text size="xs" tone="accent">
                     LATENCY:{" "}
-                    <Text as="span" fontWeight="bold">
-                      {rpcLatencyMs()}ms
+                    <Text as="span" weight="bold" tabular>
+                      {telemetry.rpcLatencyMs()}ms
                     </Text>
                   </Text>
                 </Show>
@@ -178,14 +178,14 @@ export default function Realtime() {
               <Button
                 variant="solid"
                 size="sm"
-                disabled={isRpcPending()}
-                onClick={() => checkSystemHealth()}
+                disabled={telemetry.isRpcPending()}
+                onClick={() => telemetry.checkSystemHealth()}
               >
-                {isRpcPending() ? "Calling RPC..." : "📡 Invoke HealthCheck RPC"}
+                {telemetry.isRpcPending() ? "Calling RPC..." : "📡 Invoke HealthCheck RPC"}
               </Button>
             </HStack>
 
-            <Show when={rpcResponse()}>
+            <Show when={telemetry.rpcResponse()}>
               {(res) => (
                 <HStack
                   justifyContent="space-between"
@@ -205,11 +205,11 @@ export default function Realtime() {
                     >
                       {res().status}
                     </Badge>
-                    <Text size="xs" color="fg.muted">
+                    <Text size="xs" tone="muted">
                       Version: {res().version}
                     </Text>
                   </HStack>
-                  <Text size="xs" color="fg.muted">
+                  <Text size="xs" tone="muted" tabular>
                     Uptime: {res().uptimeSeconds}s
                   </Text>
                 </HStack>

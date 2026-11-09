@@ -274,6 +274,7 @@ const textRecipe = defineRecipe({
       },
       code: {
         fontFamily: "mono",
+        fontVariantNumeric: "tabular-nums",
         bg: "bg.subtle",
         borderRadius: "sm",
         px: "1.5",
@@ -292,10 +293,138 @@ const textRecipe = defineRecipe({
       "2xl": { textStyle: "2xl" },
       "3xl": { textStyle: "3xl" },
     },
+    tone: {
+      default: { color: "fg.default" },
+      muted: { color: "fg.muted" },
+      subtle: { color: "fg.subtle" },
+      accent: { color: "accent.default" },
+      success: { color: "success.text" },
+      danger: { color: "danger.text" },
+      warning: { color: "warning.text" },
+      info: { color: "info.text" },
+    },
+    weight: {
+      normal: { fontWeight: "normal" },
+      medium: { fontWeight: "medium" },
+      semibold: { fontWeight: "semibold" },
+      bold: { fontWeight: "bold" },
+    },
+    leading: {
+      none: { lineHeight: "none" },
+      tight: { lineHeight: "tight" },
+      snug: { lineHeight: "snug" },
+      normal: { lineHeight: "normal" },
+      relaxed: { lineHeight: "relaxed" },
+    },
+    tracking: {
+      tighter: { letterSpacing: "tighter" },
+      tight: { letterSpacing: "tight" },
+      normal: { letterSpacing: "normal" },
+      wide: { letterSpacing: "wide" },
+      wider: { letterSpacing: "wider" },
+      widest: { letterSpacing: "widest" },
+    },
+    tabular: {
+      true: { fontVariantNumeric: "tabular-nums" },
+    },
   },
   defaultVariants: {
     variant: "body",
     size: "md",
+    tone: "default",
+  },
+});
+
+const inputRecipe = defineRecipe({
+  className: "input",
+  description: "Standard input recipe",
+  base: {
+    w: "full",
+    borderRadius: "l2",
+    borderWidth: "1px",
+    borderStyle: "solid",
+    borderColor: "border.default",
+    bg: "bg.default",
+    color: "fg.default",
+    outline: "none",
+    transitionProperty: "colors, border-color, box-shadow",
+    transitionDuration: "fast",
+    _placeholder: { color: "fg.subtle" },
+    _focusVisible: {
+      borderColor: "accent.default",
+      outlineWidth: "2px",
+      outlineStyle: "solid",
+      outlineColor: "accent.default",
+      outlineOffset: "1px",
+    },
+    _disabled: {
+      opacity: 0.5,
+      cursor: "not-allowed",
+    },
+  },
+  variants: {
+    size: {
+      sm: { h: "8", px: "2.5", textStyle: "xs" },
+      md: { h: "9", px: "3", textStyle: "sm" },
+      lg: { h: "10", px: "4", textStyle: "md" },
+    },
+    invalid: {
+      true: {
+        borderColor: "danger.border",
+        _focusVisible: {
+          borderColor: "danger.default",
+          outlineColor: "danger.default",
+        },
+      },
+    },
+  },
+  defaultVariants: {
+    size: "md",
+  },
+});
+
+const navLinkRecipe = defineRecipe({
+  className: "nav-link",
+  description: "Accessible navigation link recipe",
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    textDecoration: "none",
+    px: "3",
+    py: "1.5",
+    borderRadius: "sm",
+    textStyle: "xs",
+    cursor: "pointer",
+    transitionProperty: "colors, background-color",
+    transitionDuration: "fast",
+    outline: "none",
+    _focusVisible: {
+      outlineWidth: "2px",
+      outlineStyle: "solid",
+      outlineColor: "accent.default",
+      outlineOffset: "2px",
+    },
+  },
+  variants: {
+    active: {
+      true: {
+        bg: "bg.default",
+        color: "fg.default",
+        fontWeight: "semibold",
+      },
+      false: {
+        bg: "transparent",
+        color: "fg.muted",
+        fontWeight: "normal",
+        _hover: {
+          color: "fg.default",
+          bg: "bg.subtle",
+        },
+      },
+    },
+  },
+  defaultVariants: {
+    active: false,
   },
 });
 
@@ -353,7 +482,17 @@ const cardSlotRecipe = defineSlotRecipe({
 const dialogSlotRecipe = defineSlotRecipe({
   className: "dialog",
   description: "Dialog component slot recipe",
-  slots: ["backdrop", "positioner", "content", "title", "description", "closeTrigger"],
+  slots: [
+    "backdrop",
+    "positioner",
+    "content",
+    "header",
+    "body",
+    "footer",
+    "title",
+    "description",
+    "closeTrigger",
+  ],
   base: {
     backdrop: {
       position: "fixed",
@@ -387,6 +526,28 @@ const dialogSlotRecipe = defineSlotRecipe({
       flexDirection: "column",
       gap: "5",
       color: "fg.default",
+    },
+    header: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "1.5",
+      w: "full",
+      pr: "8",
+    },
+    body: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "4",
+      w: "full",
+    },
+    footer: {
+      display: "flex",
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      alignItems: "center",
+      gap: "3",
+      w: "full",
+      pt: "2",
     },
     title: {
       textStyle: "lg",
@@ -439,6 +600,8 @@ export default defineConfig({
         button: buttonRecipe,
         badge: badgeRecipe,
         text: textRecipe,
+        input: inputRecipe,
+        navLink: navLinkRecipe,
       },
       slotRecipes: {
         card: cardSlotRecipe,
@@ -452,7 +615,8 @@ export default defineConfig({
           "100dvh": { value: "100dvh" },
         },
         radii: {
-          l1: { value: "0.25rem" },
+          none: { value: "0" },
+          l1: { value: "0.375rem" },
           l2: { value: "0.5rem" },
           l3: { value: "0.75rem" },
         },
@@ -486,6 +650,12 @@ export default defineConfig({
                 _dark: "{colors.slate.900}",
               },
             },
+            elevated: {
+              value: {
+                base: "{colors.white}",
+                _dark: "{colors.slate.800}",
+              },
+            },
             subtle: {
               value: {
                 base: "{colors.slate.100}",
@@ -500,8 +670,8 @@ export default defineConfig({
             },
             backdrop: {
               value: {
-                base: "rgba(0, 0, 0, 0.5)",
-                _dark: "rgba(0, 0, 0, 0.75)",
+                base: "{colors.slate.950/50}",
+                _dark: "{colors.slate.950/75}",
               },
             },
           },
@@ -636,44 +806,6 @@ export default defineConfig({
               },
             },
           },
-          error: {
-            default: {
-              value: {
-                base: "{colors.red.600}",
-                _dark: "{colors.red.500}",
-              },
-            },
-            emphasized: {
-              value: {
-                base: "{colors.red.700}",
-                _dark: "{colors.red.400}",
-              },
-            },
-            subtle: {
-              value: {
-                base: "{colors.red.50}",
-                _dark: "{colors.red.950}",
-              },
-            },
-            fg: {
-              value: {
-                base: "{colors.white}",
-                _dark: "{colors.red.950}",
-              },
-            },
-            border: {
-              value: {
-                base: "{colors.red.300}",
-                _dark: "{colors.red.800}",
-              },
-            },
-            text: {
-              value: {
-                base: "{colors.red.700}",
-                _dark: "{colors.red.300}",
-              },
-            },
-          },
           warning: {
             default: {
               value: {
@@ -753,6 +885,94 @@ export default defineConfig({
         },
       },
     },
+  },
+  staticCss: {
+    recipes: {
+      button: ["*"],
+      badge: ["*"],
+      text: ["*"],
+      input: ["*"],
+      navLink: ["*"],
+      card: ["*"],
+      dialog: ["*"],
+    },
+    css: [
+      {
+        conditions: ["sm", "md", "lg"],
+        properties: {
+          padding: ["0", "1", "1.5", "2", "2.5", "3", "4", "5", "6", "8", "10", "12", "16", "20"],
+          paddingInline: [
+            "0",
+            "1",
+            "1.5",
+            "2",
+            "2.5",
+            "3",
+            "4",
+            "5",
+            "6",
+            "8",
+            "10",
+            "12",
+            "16",
+            "20",
+          ],
+          paddingBlock: [
+            "0",
+            "1",
+            "1.5",
+            "2",
+            "2.5",
+            "3",
+            "4",
+            "5",
+            "6",
+            "8",
+            "10",
+            "12",
+            "16",
+            "20",
+          ],
+          gap: ["0", "1", "1.5", "2", "2.5", "3", "4", "5", "6", "8", "10", "12", "16", "20"],
+          backgroundColor: [
+            "transparent",
+            "bg.canvas",
+            "bg.default",
+            "bg.elevated",
+            "bg.subtle",
+            "bg.muted",
+            "bg.backdrop",
+            "success.subtle",
+            "danger.subtle",
+            "warning.subtle",
+            "info.subtle",
+          ],
+          borderColor: [
+            "border.subtle",
+            "border.default",
+            "success.border",
+            "danger.border",
+            "warning.border",
+            "info.border",
+          ],
+          borderRadius: ["none", "sm", "md", "l1", "l2", "l3", "full"],
+          zIndex: [
+            "hide",
+            "base",
+            "docked",
+            "dropdown",
+            "sticky",
+            "banner",
+            "overlay",
+            "modal",
+            "popover",
+            "toast",
+            "tooltip",
+            "max",
+          ],
+        },
+      },
+    ],
   },
   include: ["./src/**/*.{ts,tsx}"],
   exclude: [],
