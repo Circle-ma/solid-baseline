@@ -6,16 +6,18 @@
   "scripts": {
     "dev": "bun run scripts/dev.ts",
     "dev:server": "bun run server/index.ts",
-    "dev:client": "panda codegen && vite",
-    "build": "panda codegen && vite build",
+    "dev:client": "vite",
+    "spacetime:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --project-path spacetimedb",
+    "spacetime:publish": "spacetime publish --project-path spacetimedb --server http://localhost:3001 system_db",
+    "build": "vite build",
     "codegen": "panda codegen --spec",
     "preview": "vite preview",
-    "lint": "oxlint src",
+    "lint": "oxlint src server scripts spacetimedb",
     "format": "biome format --write .",
-    "check": "oxlint src && biome check . && bun run scripts/check-rails.ts && vitest run",
+    "check": "oxlint src server scripts spacetimedb && biome check . && bun run scripts/check-rails.ts && vitest run",
     "check:rails": "bun run scripts/check-rails.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.module.json --noEmit"
   },
   "license": "MIT",
   "devDependencies": {
@@ -26,6 +28,7 @@
     "@pandacss/vite": "^2.5.0",
     "@solidjs/diagnostics": "^2.0.0",
     "@solidjs/vite-plugin": "^3.0.1",
+    "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",
     "eslint-plugin-solid": "~0.18.1",
     "happy-dom": "^21.0.4",

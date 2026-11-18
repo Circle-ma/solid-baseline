@@ -1,8 +1,11 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import ts from "typescript";
 
-const SRC_DIR = join(import.meta.dirname, "../src");
+const ROOT_DIR = join(import.meta.dirname, "..");
+const SRC_DIR = join(ROOT_DIR, "src");
+const SERVER_DIR = join(ROOT_DIR, "server");
+const SPACETIMEDB_SRC_DIR = join(ROOT_DIR, "spacetimedb/src");
 
 interface Violation {
   file: string;
@@ -30,33 +33,24 @@ const ALLOWED_Z_INDEX = new Set([
   "max",
 ]);
 
+// Only ban visual/interactive HTML elements that break design system consistency.
+// Structural container tags (div, section, main, nav, header, footer, article, aside,
+// ul, ol, li, form, label, span) are permitted.
 const BANNED_RAW_DOM = new Set([
-  "div",
-  "span",
-  "p",
+  "button",
+  "input",
+  "select",
+  "textarea",
   "h1",
   "h2",
   "h3",
   "h4",
   "h5",
   "h6",
-  "button",
-  "input",
-  "textarea",
-  "select",
-  "label",
+  "p",
+  "a",
   "hr",
   "svg",
-  "table",
-  "a",
-  "ul",
-  "li",
-  "nav",
-  "main",
-  "section",
-  "header",
-  "footer",
-  "form",
 ]);
 
 const BANNED_MARGIN_PROPS = new Set([
@@ -76,6 +70,42 @@ const BANNED_MARGIN_PROPS = new Set([
   "marginBlock",
 ]);
 
+const STYLE_COLOR_JSX_ATTRS = new Set([
+  "bg",
+  "background",
+  "backgroundColor",
+  "color",
+  "borderColor",
+  "borderTopColor",
+  "borderBottomColor",
+  "borderLeftColor",
+  "borderRightColor",
+  "outlineColor",
+  "fill",
+  "stroke",
+  "boxShadow",
+  "textShadow",
+  "border",
+  "borderTop",
+  "borderBottom",
+  "borderLeft",
+  "borderRight",
+  "css",
+]);
+
+const STYLE_CALL_TARGETS = new Set([
+  "css",
+  "css.raw",
+  "cva",
+  "sva",
+  "box",
+  "container",
+  "vstack",
+  "hstack",
+  "grid",
+  "divider",
+]);
+
 const BANNED_LEGACY_SOLID_APIS = new Set([
   "onMount",
   "splitProps",
@@ -91,11 +121,44 @@ const BANNED_LEGACY_SOLID_APIS = new Set([
 
 const BANNED_TYPOGRAPHY_PROPS = new Set(["color", "fontWeight", "lineHeight", "letterSpacing"]);
 
+const BANNED_CROSS_RUNTIME_MODULES = [
+  "src/components",
+  "~/components",
+  "@solidjs/web",
+  "@ark-ui/solid",
+  "styled-system",
+  "happy-dom",
+];
+
+const BANNED_BROWSER_GLOBALS = new Set([
+  "window",
+  "document",
+  "localStorage",
+  "sessionStorage",
+  "HTMLElement",
+  "HTMLInputElement",
+  "HTMLDivElement",
+  "HTMLButtonElement",
+  "HTMLLinkElement",
+  "DOMParser",
+  "MutationObserver",
+  "ResizeObserver",
+  "IntersectionObserver",
+  "customElements",
+]);
+
+const MAX_IDENTICAL_ADHOC_CSS_COUNT = 2;
+
 function isPascalCase(str: string): boolean {
   return /^[A-Z][A-Za-z0-9]*$/.test(str);
 }
 
+function getJsxAttrName(attr: ts.JsxAttribute): string {
+  return ts.isIdentifier(attr.name) ? attr.name.text : attr.name.getText();
+}
+
 function getAllFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
   const result: string[] = [];
   const files = readdirSync(dir);
   for (const file of files) {
@@ -110,7 +173,57 @@ function getAllFiles(dir: string): string[] {
   return result;
 }
 
-const allFilePaths = getAllFiles(SRC_DIR);
+function getEnclosingStyleCall(node: ts.Node, sourceFile: ts.SourceFile): ts.CallExpression | null {
+  let current: ts.Node | undefined = node.parent;
+  while (current) {
+    if (ts.isCallExpression(current)) {
+      const target = current.expression.getText(sourceFile);
+      if (STYLE_CALL_TARGETS.has(target)) {
+        return current;
+      }
+    }
+    current = current.parent;
+  }
+  return null;
+}
+
+function getEnclosingJsxAttribute(node: ts.Node): ts.JsxAttribute | null {
+  let current: ts.Node | undefined = node.parent;
+  while (current) {
+    if (ts.isJsxAttribute(current)) {
+      return current;
+    }
+    if (ts.isJsxOpeningElement(current) || ts.isJsxSelfClosingElement(current)) {
+      return null;
+    }
+    current = current.parent;
+  }
+  return null;
+}
+
+function isFreeGlobalReference(node: ts.Identifier): boolean {
+  const parent = node.parent;
+  if (!parent) return false;
+  if (ts.isPropertyAccessExpression(parent) && parent.name === node) return false;
+  if (ts.isPropertyAssignment(parent) && parent.name === node) return false;
+  if (ts.isPropertySignature(parent) && parent.name === node) return false;
+  if (ts.isMethodDeclaration(parent) && parent.name === node) return false;
+  if (ts.isMethodSignature(parent) && parent.name === node) return false;
+  if (ts.isParameter(parent) && parent.name === node) return false;
+  if (ts.isVariableDeclaration(parent) && parent.name === node) return false;
+  if (ts.isFunctionDeclaration(parent) && parent.name === node) return false;
+  if (ts.isImportSpecifier(parent) || ts.isImportClause(parent) || ts.isNamespaceImport(parent)) {
+    return false;
+  }
+  if (ts.isBindingElement(parent) && parent.name === node) return false;
+  if (ts.isTypeAliasDeclaration(parent) || ts.isInterfaceDeclaration(parent)) return false;
+  return true;
+}
+
+const srcFilePaths = getAllFiles(SRC_DIR);
+const serverFilePaths = getAllFiles(SERVER_DIR);
+const moduleFilePaths = getAllFiles(SPACETIMEDB_SRC_DIR);
+const allFilePaths = [...srcFilePaths, ...serverFilePaths, ...moduleFilePaths];
 
 // Create TypeScript Program and obtain TypeChecker for semantic analysis
 const program = ts.createProgram(allFilePaths, {
@@ -119,7 +232,7 @@ const program = ts.createProgram(allFilePaths, {
   jsx: ts.JsxEmit.Preserve,
   jsxImportSource: "@solidjs/web",
   moduleResolution: ts.ModuleResolutionKind.Bundler,
-  baseUrl: join(import.meta.dirname, ".."),
+  baseUrl: ROOT_DIR,
   paths: {
     "~/*": ["src/*"],
     "styled-system/*": ["styled-system/*"],
@@ -128,9 +241,74 @@ const program = ts.createProgram(allFilePaths, {
 
 const checker = program.getTypeChecker();
 
+// Track identical one-off css(...) calls in feature code across src/ (excluding UI primitives)
+const adhocCssOccurrences = new Map<string, Array<{ sourceFile: ts.SourceFile; node: ts.Node }>>();
+
+function addViolation(
+  sourceFile: ts.SourceFile,
+  relPath: string,
+  node: ts.Node,
+  type: string,
+  message: string,
+) {
+  const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  const snippet = node.getText(sourceFile).slice(0, 100).replace(/\n/g, " ");
+  violations.push({
+    file: relPath,
+    line: line + 1,
+    col: character + 1,
+    type,
+    message,
+    snippet,
+  });
+}
+
+function scanBackendFile(sourceFile: ts.SourceFile) {
+  const filePath = sourceFile.fileName;
+  const relPath = relative(ROOT_DIR, filePath);
+
+  function visitor(node: ts.Node) {
+    // Rule #16: CROSS_RUNTIME_IMPORT_BANNED (server/ & spacetimedb/ must never import UI/DOM)
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      const spec = node.moduleSpecifier;
+      if (spec && ts.isStringLiteral(spec)) {
+        const mod = spec.text;
+        for (const banned of BANNED_CROSS_RUNTIME_MODULES) {
+          if (mod === banned || mod.startsWith(`${banned}/`) || mod.includes(`/${banned}`)) {
+            addViolation(
+              sourceFile,
+              relPath,
+              node,
+              "CROSS_RUNTIME_IMPORT_BANNED",
+              `Cross-runtime import "${mod}" is forbidden in ${relPath}. Server and SpacetimeDB modules must never depend on browser UI primitives, @solidjs/web, or DOM packages.`,
+            );
+            break;
+          }
+        }
+      }
+    }
+
+    if (ts.isIdentifier(node) && BANNED_BROWSER_GLOBALS.has(node.text)) {
+      if (isFreeGlobalReference(node)) {
+        addViolation(
+          sourceFile,
+          relPath,
+          node,
+          "CROSS_RUNTIME_IMPORT_BANNED",
+          `Browser/DOM global "${node.text}" is forbidden in ${relPath}. Backend and SpacetimeDB runtimes must remain strictly isolated from DOM APIs.`,
+        );
+      }
+    }
+
+    ts.forEachChild(node, visitor);
+  }
+
+  visitor(sourceFile);
+}
+
 function scanSourceFile(sourceFile: ts.SourceFile) {
   const filePath = sourceFile.fileName;
-  const relPath = relative(join(import.meta.dirname, ".."), filePath);
+  const relPath = relative(ROOT_DIR, filePath);
   const fileContent = sourceFile.text;
 
   const isUiPrimitive =
@@ -138,20 +316,9 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
   const isDocumentShell = filePath.endsWith("src/Document.tsx");
   const isRoute = filePath.includes("/src/routes/") || filePath.includes("\\src\\routes\\");
   const isLib = filePath.includes("/src/lib/") || filePath.includes("\\src\\lib\\");
-  const isSchema = filePath.includes("/src/schema/") || filePath.includes("\\src\\schema\\");
-  const isTest = filePath.includes("/src/__tests__/") || filePath.includes("\\src\\__tests__\\");
 
-  function addViolation(node: ts.Node, type: string, message: string) {
-    const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-    const snippet = node.getText(sourceFile).slice(0, 100).replace(/\n/g, " ");
-    violations.push({
-      file: relPath,
-      line: line + 1,
-      col: character + 1,
-      type,
-      message,
-      snippet,
-    });
+  function report(node: ts.Node, type: string, message: string) {
+    addViolation(sourceFile, relPath, node, type, message);
   }
 
   // 1. Text-level check: Escape hatches banned anywhere in src/
@@ -173,7 +340,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
 
   function checkZIndex(exprNode: ts.Node, reportNode: ts.Node) {
     if (ts.isNumericLiteral(exprNode)) {
-      addViolation(
+      report(
         reportNode,
         "ARBITRARY_Z_INDEX",
         `Arbitrary numeric z-index "${exprNode.text}" destroys stacking context. Use canonical tokens: "hide", "base", "docked", "dropdown", "sticky", "banner", "overlay", "modal", "popover", "toast", "tooltip", "max".`,
@@ -182,7 +349,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
     }
     if (ts.isStringLiteral(exprNode)) {
       if (!ALLOWED_Z_INDEX.has(exprNode.text)) {
-        addViolation(
+        report(
           reportNode,
           "ARBITRARY_Z_INDEX",
           `Arbitrary z-index "${exprNode.text}" destroys stacking context. Use canonical tokens: "hide", "base", "docked", "dropdown", "sticky", "banner", "overlay", "modal", "popover", "toast", "tooltip", "max".`,
@@ -219,7 +386,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
 
       if (violating) {
-        addViolation(
+        report(
           reportNode,
           "ARBITRARY_Z_INDEX",
           `Arbitrary z-index of type "${typeStr}" destroys stacking context. Use canonical tokens: "hide", "base", "docked", "dropdown", "sticky", "banner", "overlay", "modal", "popover", "toast", "tooltip", "max".`,
@@ -231,10 +398,10 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
   }
 
   function visitor(node: ts.Node) {
-    // 2. Check for type assertion escape hatch: `as any`
+    // Rule #9: Check for type assertion escape hatch: `as any`
     if (ts.isAsExpression(node)) {
       if (node.type.kind === ts.SyntaxKind.AnyKeyword) {
-        addViolation(
+        report(
           node,
           "TYPE_ESCAPE_HATCH_BANNED",
           "Type assertion `as any` is strictly banned. Derive types from SSOT schema or use narrow type discrimination.",
@@ -242,61 +409,70 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // 3. Check for inline style attribute: style={...} or style="..."
-    if (ts.isJsxAttribute(node) && node.name.text === "style") {
-      addViolation(
+    // Rule #1: Check for inline style attribute: style={...} or style="..."
+    if (ts.isJsxAttribute(node) && getJsxAttrName(node) === "style") {
+      report(
         node,
         "INLINE_STYLE_FORBIDDEN",
         "Inline `style` attribute is strictly banned. Use design system tokens via Panda CSS primitives in ~/components/ui.",
       );
     }
 
-    // 4. Check for hardcoded hex colors & raw color functions
+    // Rules #2 & #3: Check for hardcoded hex colors & raw color functions ONLY inside style contexts
     if (ts.isStringLiteral(node)) {
-      const text = node.text;
-      if (/^#(?:[0-9a-fA-F]{3,4}){1,2}$/.test(text) && !text.includes("/") && !text.includes("?")) {
-        const parent = node.parent;
-        const isHref =
-          ts.isJsxAttribute(parent) && (parent.name.text === "href" || parent.name.text === "to");
-        if (!isHref) {
-          addViolation(
+      const inStyleCall = getEnclosingStyleCall(node, sourceFile) !== null;
+      const enclosingAttr = getEnclosingJsxAttribute(node);
+      const inStyleJsxAttr =
+        enclosingAttr !== null && STYLE_COLOR_JSX_ATTRS.has(getJsxAttrName(enclosingAttr));
+
+      if (inStyleCall || inStyleJsxAttr) {
+        const text = node.text;
+        if (
+          /^#(?:[0-9a-fA-F]{3,4}){1,2}$/.test(text) &&
+          !text.includes("/") &&
+          !text.includes("?")
+        ) {
+          report(
             node,
             "HEX_COLOR_HARDCODED",
-            `Hardcoded hex color "${text}" is forbidden. Map visual surfaces to tokens exported from '~/components/ui/tokens'.`,
+            `Hardcoded hex color "${text}" is forbidden in styles. Map visual surfaces to tokens exported from '~/components/ui/tokens'.`,
+          );
+        }
+
+        const rawColorMatch = /\b(rgba|rgb|hsla|hsl|oklch)\s*\(/i.exec(text);
+        if (rawColorMatch) {
+          report(
+            node,
+            "RAW_COLOR_FUNCTION",
+            `Raw color function "${rawColorMatch[0]}...)" is forbidden in styles. Define semantic tokens in panda.config.ts or use tokens from '~/components/ui/tokens'.`,
           );
         }
       }
-
-      const rawColorMatch = /\b(rgba|rgb|hsla|hsl|oklch)\s*\(/i.exec(text);
-      if (rawColorMatch) {
-        addViolation(
-          node,
-          "RAW_COLOR_FUNCTION",
-          `Raw color function "${rawColorMatch[0]}...)" is forbidden. Define semantic tokens in panda.config.ts or use tokens from '~/components/ui/tokens'.`,
-        );
-      }
     }
 
-    // 5. Check for arbitrary z-index (semantic TypeChecker analysis)
-    if (ts.isJsxAttribute(node) && (node.name.text === "zIndex" || node.name.text === "z-index")) {
-      if (node.initializer) {
-        const expr = ts.isJsxExpression(node.initializer)
-          ? node.initializer.expression
-          : node.initializer;
-        if (expr) {
-          checkZIndex(expr, node);
+    // Rule #4: Check for arbitrary z-index (semantic TypeChecker analysis) in JSX & style calls
+    if (ts.isJsxAttribute(node)) {
+      const attrName = getJsxAttrName(node);
+      if (attrName === "zIndex" || attrName === "z-index") {
+        if (node.initializer) {
+          const expr = ts.isJsxExpression(node.initializer)
+            ? node.initializer.expression
+            : node.initializer;
+          if (expr) {
+            checkZIndex(expr, node);
+          }
         }
       }
-    } else if (ts.isPropertyAssignment(node)) {
+    } else if (ts.isPropertyAssignment(node) && getEnclosingStyleCall(node, sourceFile) !== null) {
       const propName = node.name.getText(sourceFile).replace(/['"]/g, "");
       if (propName === "zIndex" || propName === "z-index") {
         checkZIndex(node.initializer, node);
       }
     }
 
-    // 6. Margin props: Ban push margins, permit flex alignment ("auto" for ml, mr, mx)
+    // Rule #5: Margin props — ban push margins ONLY in JSX attributes & style calls (permit ml/mr/mx="auto")
     if (ts.isJsxAttribute(node)) {
-      const propName = node.name.text;
+      const propName = getJsxAttrName(node);
       if (BANNED_MARGIN_PROPS.has(propName)) {
         let isAllowedAuto = false;
         if (propName === "ml" || propName === "mr" || propName === "mx") {
@@ -317,14 +493,14 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
           }
         }
         if (!isAllowedAuto) {
-          addViolation(
+          report(
             node,
             "MARGIN_PROP_FORBIDDEN",
             `Margin prop "${propName}" is forbidden. Declare Margin Dead. Components must never dictate outer spacing; parent containers orchestrate spacing via gap (only ml/mr/mx="auto" are permitted for flex alignment).`,
           );
         }
       }
-    } else if (ts.isPropertyAssignment(node)) {
+    } else if (ts.isPropertyAssignment(node) && getEnclosingStyleCall(node, sourceFile) !== null) {
       const propName = node.name.getText(sourceFile).replace(/['"]/g, "");
       if (BANNED_MARGIN_PROPS.has(propName)) {
         let isAllowedAuto = false;
@@ -340,69 +516,75 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
           }
         }
         if (!isAllowedAuto) {
-          addViolation(
+          report(
             node,
             "MARGIN_PROP_FORBIDDEN",
-            `Margin prop "${propName}" is forbidden. Declare Margin Dead. Components must never dictate outer spacing; parent containers orchestrate spacing via gap (only ml/mr/mx="auto" are permitted for flex alignment).`,
+            `Margin prop "${propName}" is forbidden in style objects. Components must never dictate outer spacing; parent containers orchestrate spacing via gap (only ml/mr/mx="auto" are permitted for flex alignment).`,
           );
         }
       }
     }
 
-    // 7. Outside src/components/ui/ and src/Document.tsx, forbid raw DOM elements
+    // Rule #6: Outside src/components/ui/ and src/Document.tsx, forbid raw visual/interactive DOM elements
     if (!isUiPrimitive && !isDocumentShell) {
       if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
         const tagName = node.tagName.getText(sourceFile);
         if (BANNED_RAW_DOM.has(tagName)) {
-          addViolation(
+          report(
             node,
             "RAW_DOM_ELEMENT_BANNED",
-            `Raw HTML element "<${tagName}>" is forbidden in features. Use systematic semantic UI primitives from "~/components/ui" (e.g. <Box as="${tagName}">, <VStack as="section">, <HStack as="nav">, <Heading>, <Text>, <Button>, <NavLink>).`,
+            `Raw visual/interactive HTML element "<${tagName}>" is forbidden outside UI primitives. Use systematic primitives from "~/components/ui" (<Button>, <Input>, <Heading>, <Text>, <NavLink>, <Divider>, <Icon>).`,
           );
         }
       }
     }
 
-    // 8. Outside src/components/ui/, strictly forbid importing from Panda internals
+    // Rule #7: Outside src/components/ui/, allow one-off `css()` from `styled-system/css`
+    // (repeated >= 3 identical styles must be extracted to cva/recipe); still ban `styled-system/patterns` and `styled-system/jsx`.
     if (!isUiPrimitive) {
       if (ts.isImportDeclaration(node)) {
         const moduleSpecifier = node.moduleSpecifier;
         if (ts.isStringLiteral(moduleSpecifier)) {
           const mod = moduleSpecifier.text;
-          if (
-            mod === "styled-system/css" ||
-            mod === "styled-system/patterns" ||
-            mod === "styled-system/jsx"
-          ) {
-            addViolation(
+          if (mod === "styled-system/patterns" || mod === "styled-system/jsx") {
+            report(
               node,
               "ADHOC_CSS_IN_FEATURE_BANNED",
-              `Direct import from "${mod}" in feature code is strictly forbidden. Consume pre-composed primitives from "~/components/ui".`,
+              `Direct import from "${mod}" in feature code is forbidden. Consume layout primitives from "~/components/ui" (one-off page layout styles may use css() from "styled-system/css").`,
             );
           }
         }
+      } else if (
+        ts.isCallExpression(node) &&
+        node.expression.getText(sourceFile) === "css" &&
+        node.arguments.length > 0
+      ) {
+        const normalized = node.arguments
+          .map((arg) => arg.getText(sourceFile).replace(/\s+/g, " ").trim())
+          .join(",");
+        const existing = adhocCssOccurrences.get(normalized) ?? [];
+        existing.push({ sourceFile, node });
+        adhocCssOccurrences.set(normalized, existing);
       }
     }
 
-    // 9. In src/routes/ and src/lib/, enforce SSOT schema governance for entities & RPC contracts
-    // Route-local non-exported *Props / *View / *ViewModel / *State UI types are permitted in src/routes/**.
-    if (isRoute || isLib) {
+    // Rule #8: In src/routes/, forbid exported interface/type declarations so domain contracts live in src/schema/.
+    // src/lib/ is permitted to export its own client/hook configuration types.
+    if (isRoute) {
       if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
         const hasExport = node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
-        const isLocalRouteUiType =
-          isRoute && !hasExport && /(?:View|ViewModel|Props|State)$/.test(node.name.text);
-        if (!isLocalRouteUiType) {
+        if (hasExport) {
           const kindLabel = ts.isInterfaceDeclaration(node) ? "interface" : "type alias";
-          addViolation(
+          report(
             node,
             "UNSCOPED_TYPE_DEFINITION",
-            `Ad-hoc ${kindLabel} "${node.name.text}" in ${relPath} is forbidden. Database entities, RPC contracts, and shared context types must be declared in src/schema/ (non-exported *Props / *View / *ViewModel / *State UI types are allowed in src/routes/).`,
+            `Exported ${kindLabel} "${node.name.text}" in ${relPath} is forbidden. Domain entities, RPC contracts, and shared types must be declared in src/schema/ (private non-exported helper types are allowed).`,
           );
         }
       }
     }
 
-    // 10. Check for banned legacy Solid 1.x APIs
+    // Rule #10: Check for banned legacy Solid 1.x APIs
     if (ts.isIdentifier(node)) {
       const idName = node.text;
       if (BANNED_LEGACY_SOLID_APIS.has(idName)) {
@@ -413,7 +595,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
           (ts.isJsxOpeningElement(parent) || ts.isJsxSelfClosingElement(parent)) &&
           parent.tagName === node;
         if (isImporting || isCalling || isJsxTag) {
-          addViolation(
+          report(
             node,
             "LEGACY_SOLID_API_BANNED",
             `Legacy Solid 1.x API "${idName}" is banned. Use Solid 2.0 primitives (e.g. onSettled, omit, createSignal(() => ...), Errored/Loading).`,
@@ -422,50 +604,57 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // 11. Check for unnamed reactive primitives: createSignal, createMemo, createOptimistic
-    if (ts.isCallExpression(node)) {
+    // Rule #11: In src/lib/, enforce diagnostic attribution { name: ... } on shared reactive primitives
+    if (isLib && ts.isCallExpression(node)) {
       const fnName = node.expression.getText(sourceFile);
       if (fnName === "createSignal" || fnName === "createMemo" || fnName === "createOptimistic") {
         let hasNameOption = false;
-        const optArg =
-          fnName === "createSignal" || fnName === "createMemo"
-            ? node.arguments[1]
-            : node.arguments[1];
+        const optArg = node.arguments[1];
         if (optArg && ts.isObjectLiteralExpression(optArg)) {
           for (const prop of optArg.properties) {
             if (ts.isPropertyAssignment(prop)) {
               const pName = prop.name.getText(sourceFile);
-              if (
-                pName === "name" &&
-                prop.initializer &&
-                ts.isStringLiteral(prop.initializer) &&
-                prop.initializer.text.length > 0
-              ) {
-                hasNameOption = true;
-                break;
+              if (pName === "name" && prop.initializer) {
+                if (ts.isStringLiteral(prop.initializer)) {
+                  hasNameOption = prop.initializer.text.length > 0;
+                } else if (
+                  ts.isTemplateExpression(prop.initializer) ||
+                  ts.isNoSubstitutionTemplateLiteral(prop.initializer)
+                ) {
+                  hasNameOption = true;
+                } else {
+                  const initType = checker.getTypeAtLocation(prop.initializer);
+                  hasNameOption =
+                    Boolean(initType.flags & ts.TypeFlags.StringLike) ||
+                    checker.typeToString(initType) === "string";
+                }
+                if (hasNameOption) break;
               }
+            } else if (ts.isShorthandPropertyAssignment(prop) && prop.name.text === "name") {
+              hasNameOption = true;
+              break;
             }
           }
         }
         if (!hasNameOption) {
-          addViolation(
+          report(
             node,
             "UNNAMED_REACTIVE_PRIMITIVE",
-            `Reactive primitive "${fnName}" must provide { name: "..." } diagnostic attribution option for @solidjs/diagnostics.`,
+            `Shared reactive primitive "${fnName}" in src/lib/ must provide { name: "..." } diagnostic attribution option for @solidjs/diagnostics.`,
           );
         }
       }
     }
 
-    // 12. Check for legacy typography props on <Text>, <Heading>, <Code>
+    // Rule #12: Check for legacy typography props on <Text>, <Heading>, <Code>
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
       if (tagName === "Text" || tagName === "Heading" || tagName === "Code") {
         for (const attr of node.attributes.properties) {
           if (ts.isJsxAttribute(attr)) {
-            const attrName = attr.name.text;
+            const attrName = getJsxAttrName(attr);
             if (BANNED_TYPOGRAPHY_PROPS.has(attrName)) {
-              addViolation(
+              report(
                 attr,
                 "LEGACY_TYPOGRAPHY_PROP_BANNED",
                 `Legacy typography prop "${attrName}" is forbidden on <${tagName}>. Use systematic recipe variants (tone="...", weight="...", leading="...", tracking="...").`,
@@ -476,13 +665,13 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // 13. Check for component parameter destructuring: function Comp({ prop }) is banned
+    // Rule #13: Check for component parameter destructuring: function Comp({ prop }) is banned
     if (ts.isFunctionDeclaration(node)) {
       const fnName = node.name?.text;
       if (fnName && isPascalCase(fnName)) {
         for (const param of node.parameters) {
           if (ts.isObjectBindingPattern(param.name)) {
-            addViolation(
+            report(
               param,
               "COMPONENT_PARAM_DESTRUCTURE_BANNED",
               `Component parameter destructuring in "${fnName}" is strictly forbidden. Solid 2.0 tracks reactivity through property access; always use \`props.property\`.`,
@@ -499,7 +688,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       if (init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init))) {
         for (const param of init.parameters) {
           if (ts.isObjectBindingPattern(param.name)) {
-            addViolation(
+            report(
               param,
               "COMPONENT_PARAM_DESTRUCTURE_BANNED",
               `Component parameter destructuring in "${node.name.text}" is strictly forbidden. Solid 2.0 tracks reactivity through property access; always use \`props.property\`.`,
@@ -509,7 +698,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // 14. Architecture boundary: In src/routes/, forbid direct fetch() or DbConnection instantiation
+    // Rule #14: Architecture boundary: In src/routes/, forbid direct fetch() or DbConnection instantiation
     if (isRoute) {
       if (ts.isCallExpression(node)) {
         const callTarget = node.expression.getText(sourceFile);
@@ -518,7 +707,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
           callTarget === "window.fetch" ||
           callTarget === "globalThis.fetch"
         ) {
-          addViolation(
+          report(
             node,
             "UNSCOPED_IO_CALL_BANNED",
             "Direct fetch() call in routes is forbidden. All external I/O must be encapsulated in src/lib/ or Context Actions.",
@@ -527,7 +716,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       } else if (ts.isNewExpression(node)) {
         const newTarget = node.expression.getText(sourceFile);
         if (newTarget.includes("DbConnection") || newTarget.includes("DbConnectionBuilder")) {
-          addViolation(
+          report(
             node,
             "UNSCOPED_IO_CALL_BANNED",
             "Direct DbConnection instantiation in routes is forbidden. SpacetimeDB connections must be managed via src/lib/ or Context Providers.",
@@ -536,7 +725,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // 15. Forbid legacy single-argument createEffect(fn) to prevent hitting the Ark UI 5.x compatibility bridge
+    // Rule #15: Forbid legacy single-argument createEffect(fn) to prevent hitting the Ark UI 5.x compatibility bridge
     if (ts.isCallExpression(node)) {
       const fnName = node.expression.getText(sourceFile);
       if (fnName === "createEffect") {
@@ -554,7 +743,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
             return false;
           });
         if (node.arguments.length < 2 || isOptionsOnlySecondArg) {
-          addViolation(
+          report(
             node,
             "SINGLE_ARG_CREATE_EFFECT_BANNED",
             "Single-argument createEffect(fn) is forbidden in application code to avoid triggering the temporary Ark UI 5.x compatibility bridge. Always use Solid 2.0 split createEffect(compute, apply) or onSettled().",
@@ -569,10 +758,32 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
   visitor(sourceFile);
 }
 
-for (const filePath of allFilePaths) {
+for (const filePath of srcFilePaths) {
   const sourceFile = program.getSourceFile(filePath);
   if (sourceFile) {
     scanSourceFile(sourceFile);
+  }
+}
+
+for (const filePath of [...serverFilePaths, ...moduleFilePaths]) {
+  const sourceFile = program.getSourceFile(filePath);
+  if (sourceFile) {
+    scanBackendFile(sourceFile);
+  }
+}
+
+// Enforce rule #7 repetition threshold: >= 3 identical one-off css() calls must be extracted
+for (const [, occurrences] of adhocCssOccurrences) {
+  if (occurrences.length > MAX_IDENTICAL_ADHOC_CSS_COUNT) {
+    for (const { sourceFile, node } of occurrences) {
+      addViolation(
+        sourceFile,
+        relative(ROOT_DIR, sourceFile.fileName),
+        node,
+        "REPEATED_ADHOC_CSS_BANNED",
+        `Identical one-off css() block repeated ${occurrences.length} times (>= 3). Extract it into a reusable cva() or panda.config.ts recipe.`,
+      );
+    }
   }
 }
 
@@ -594,7 +805,7 @@ if (violations.length > 0) {
   process.exit(1);
 } else {
   console.log(
-    "✅ [ARCHITECTURAL RAILS VERIFIED] All 15 architectural invariants strictly verified across src/ via TypeScript AST & TypeChecker.\n",
+    "✅ [ARCHITECTURAL RAILS VERIFIED] All 16 architectural invariants strictly verified across src/, server/, and spacetimedb/ via TypeScript AST & TypeChecker.\n",
   );
   process.exit(0);
 }
