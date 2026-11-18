@@ -12,10 +12,7 @@ import type {
  * Pure compile-time types — zero runtime dictionary overhead.
  */
 
-export type SpacingRailToken = Extract<
-  SpacingToken,
-  "0" | "1" | "1.5" | "2" | "2.5" | "3" | "4" | "5" | "6" | "8" | "10" | "12" | "16" | "20"
->;
+export type SpacingRailToken = Exclude<SpacingToken, `-${string}`>;
 
 export type SurfaceToken = Extract<ColorToken, "transparent" | `bg.${string}` | `${string}.subtle`>;
 
@@ -26,8 +23,8 @@ export type ForegroundToken = Extract<
 
 export type BorderColorToken = Extract<ColorToken, `border.${string}` | `${string}.border`>;
 
-export type RadiusRailToken = RadiusToken;
+export type RadiusRailToken = Extract<RadiusToken, "none" | "l1" | "l2" | "l3" | "full">;
 
 export type ZIndexRailToken = ZIndexToken;
 
-export type ShadowRailToken = ShadowToken;
+export type ShadowRailToken = Extract<ShadowToken, "card" | "elevated" | "modal">;

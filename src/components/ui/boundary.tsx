@@ -1,9 +1,10 @@
 import type { JSX } from "@solidjs/web";
 import type { ParentComponent } from "solid-js";
-import { Errored, Loading, untrack } from "solid-js";
+import { Errored, Loading } from "solid-js";
 import { Button } from "./button";
 import { Card } from "./card";
 import { VStack } from "./layout";
+import { Skeleton } from "./skeleton";
 import { Code, Text } from "./typography";
 
 export interface AsyncBoundaryProps {
@@ -14,14 +15,23 @@ export interface AsyncBoundaryProps {
   errorFallback?: (err: () => unknown, reset: () => void) => JSX.Element;
 }
 
+function formatBoundaryError(raw: unknown): string {
+  return String(raw instanceof Error ? raw.message : raw);
+}
+
 function DefaultLoadingFallback() {
   return (
-    <Card.Root>
+    <Card.Root
+      variant="subtle"
+      density="compact"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading content"
+    >
       <Card.Body>
-        <VStack gap="2" alignItems="center">
-          <Text size="sm" tone="muted">
-            Loading state in flight...
-          </Text>
+        <VStack gap="3" alignItems="stretch">
+          <Skeleton variant="heading" />
+          <Skeleton lines={2} />
         </VStack>
       </Card.Body>
     </Card.Root>
@@ -48,8 +58,6 @@ export const AsyncBoundary: ParentComponent<AsyncBoundaryProps> = (props) => {
             return props.errorFallback(err, handleRetry);
           }
 
-          const raw = untrack(() => err());
-          const errMsg = String(raw instanceof Error ? raw.message : raw);
           return (
             <Card.Root>
               <Card.Header>
@@ -64,7 +72,7 @@ export const AsyncBoundary: ParentComponent<AsyncBoundaryProps> = (props) => {
                     Error Details:
                   </Text>
                   <Code size="sm" tone="danger">
-                    {errMsg}
+                    {formatBoundaryError(err())}
                   </Code>
                 </VStack>
               </Card.Body>

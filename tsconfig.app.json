@@ -18,5 +18,6 @@
       "~/*": ["./src/*"]
     }
   },
-  "include": ["src", "styled-system"]
+  "include": ["src", "styled-system"],
+  "exclude": ["styled-system/jsx", "styled-system/types/jsx.d.ts"]
 }

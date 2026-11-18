@@ -1,20 +1,44 @@
 import type { ComponentProps } from "@solidjs/web";
-import { omit, type ParentComponent } from "solid-js";
-import { card } from "styled-system/recipes";
+import {
+  type Accessor,
+  createContext,
+  createMemo,
+  omit,
+  type ParentComponent,
+  useContext,
+} from "solid-js";
+import { type CardVariantProps, card } from "styled-system/recipes";
 
-const cardStyles = card();
+type CardSlotClasses = ReturnType<typeof card>;
+
+const defaultCardStyles: CardSlotClasses = card();
+const CardStylesContext = createContext<Accessor<CardSlotClasses>>(() => defaultCardStyles);
+
+export interface CardRootProps extends Omit<ComponentProps<"div">, "style"> {
+  variant?: CardVariantProps["variant"];
+  density?: CardVariantProps["density"];
+}
 
 /**
  * Root Card Container
- * Encapsulated container with pre-configured padding, borders, and elevation.
- * Inline `style` is strictly forbidden at compile time.
+ * Encapsulated container driven by the `card` slot recipe (`variant` + `density`)
+ * and propagated reactively to descendant slots via `CardStylesContext`.
  */
-export const CardRoot: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
-  const rest = omit(props, "class", "children");
+export const CardRoot: ParentComponent<CardRootProps> = (props) => {
+  const rest = omit(props, "variant", "density", "class", "children");
+  const styles = createMemo(() =>
+    card({
+      variant: props.variant,
+      density: props.density,
+    }),
+  );
+
   return (
-    <div {...rest} class={[cardStyles.root, props.class]}>
-      {props.children}
-    </div>
+    <CardStylesContext value={styles}>
+      <div {...rest} class={[styles().root, props.class]}>
+        {props.children}
+      </div>
+    </CardStylesContext>
   );
 };
 
@@ -24,8 +48,9 @@ export const CardRoot: ParentComponent<Omit<ComponentProps<"div">, "style">> = (
  */
 export const CardHeader: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
   const rest = omit(props, "class", "children");
+  const styles = useContext(CardStylesContext);
   return (
-    <div {...rest} class={[cardStyles.header, props.class]}>
+    <div {...rest} class={[styles().header, props.class]}>
       {props.children}
     </div>
   );
@@ -37,8 +62,9 @@ export const CardHeader: ParentComponent<Omit<ComponentProps<"div">, "style">> =
  */
 export const CardTitle: ParentComponent<Omit<ComponentProps<"h3">, "style">> = (props) => {
   const rest = omit(props, "class", "children");
+  const styles = useContext(CardStylesContext);
   return (
-    <h3 {...rest} class={[cardStyles.title, props.class]}>
+    <h3 {...rest} class={[styles().title, props.class]}>
       {props.children}
     </h3>
   );
@@ -50,8 +76,9 @@ export const CardTitle: ParentComponent<Omit<ComponentProps<"h3">, "style">> = (
  */
 export const CardDescription: ParentComponent<Omit<ComponentProps<"p">, "style">> = (props) => {
   const rest = omit(props, "class", "children");
+  const styles = useContext(CardStylesContext);
   return (
-    <p {...rest} class={[cardStyles.description, props.class]}>
+    <p {...rest} class={[styles().description, props.class]}>
       {props.children}
     </p>
   );
@@ -63,8 +90,9 @@ export const CardDescription: ParentComponent<Omit<ComponentProps<"p">, "style">
  */
 export const CardBody: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
   const rest = omit(props, "class", "children");
+  const styles = useContext(CardStylesContext);
   return (
-    <div {...rest} class={[cardStyles.body, props.class]}>
+    <div {...rest} class={[styles().body, props.class]}>
       {props.children}
     </div>
   );
@@ -76,8 +104,9 @@ export const CardBody: ParentComponent<Omit<ComponentProps<"div">, "style">> = (
  */
 export const CardFooter: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
   const rest = omit(props, "class", "children");
+  const styles = useContext(CardStylesContext);
   return (
-    <div {...rest} class={[cardStyles.footer, props.class]}>
+    <div {...rest} class={[styles().footer, props.class]}>
       {props.children}
     </div>
   );

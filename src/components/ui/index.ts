@@ -7,6 +7,8 @@ export * from "./icon";
 export * from "./input";
 export * from "./layout";
 export * from "./link";
+export * from "./skeleton";
+export * from "./textarea";
 export * from "./theme-toggle";
 export * from "./tokens";
 export * from "./typography";

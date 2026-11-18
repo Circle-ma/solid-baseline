@@ -1,6 +1,7 @@
 import { Dialog as ArkDialog, useDialogContext } from "@ark-ui/solid/dialog";
+import { usePresenceContext } from "@ark-ui/solid/presence";
 import { type ComponentProps, isServer, type JSX, Portal as SolidPortal } from "@solidjs/web";
-import { omit, type ParentComponent, Show } from "solid-js";
+import { omit, type ParentComponent, Show, untrack } from "solid-js";
 import { type ButtonVariant, button, dialog } from "styled-system/recipes";
 import { Icon } from "./icon";
 
@@ -30,8 +31,16 @@ function serializeArkClass(value: unknown): string {
 export const DialogRoot: ParentComponent<Omit<ComponentProps<typeof ArkDialog.Root>, "style">> = (
   props,
 ) => {
-  const rest = omit(props, "children");
-  return <ArkDialog.Root {...rest}>{props.children}</ArkDialog.Root>;
+  const rest = omit(props, "children", "lazyMount", "unmountOnExit");
+  return (
+    <ArkDialog.Root
+      lazyMount={props.lazyMount ?? true}
+      unmountOnExit={props.unmountOnExit ?? true}
+      {...rest}
+    >
+      {props.children}
+    </ArkDialog.Root>
+  );
 };
 
 export interface DialogTriggerProps
@@ -57,39 +66,58 @@ export const DialogTrigger: ParentComponent<DialogTriggerProps> = (props) => {
   );
 };
 
-export const DialogBackdrop: ParentComponent<
-  Omit<ComponentProps<typeof ArkDialog.Backdrop>, "style">
-> = (props) => {
+export const DialogBackdrop: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
+  const api = useDialogContext();
+  const presence = usePresenceContext();
   const rest = omit(props, "class", "children");
   return (
-    <ArkDialog.Backdrop {...rest} class={serializeArkClass([dialogStyles.backdrop, props.class])}>
-      {props.children}
-    </ArkDialog.Backdrop>
+    <Show when={!presence().unmounted}>
+      <div
+        {...api().getBackdropProps()}
+        {...presence().presenceProps}
+        {...rest}
+        class={[dialogStyles.backdrop, props.class]}
+      >
+        {props.children}
+      </div>
+    </Show>
   );
 };
 
-export const DialogPositioner: ParentComponent<
-  Omit<ComponentProps<typeof ArkDialog.Positioner>, "style">
-> = (props) => {
+export const DialogPositioner: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
+  const api = useDialogContext();
+  const presence = usePresenceContext();
   const rest = omit(props, "class", "children");
   return (
-    <ArkDialog.Positioner
-      {...rest}
-      class={serializeArkClass([dialogStyles.positioner, props.class])}
-    >
-      {props.children}
-    </ArkDialog.Positioner>
+    <Show when={!presence().unmounted}>
+      <div {...api().getPositionerProps()} {...rest} class={[dialogStyles.positioner, props.class]}>
+        {props.children}
+      </div>
+    </Show>
   );
 };
 
-export const DialogContent: ParentComponent<
-  Omit<ComponentProps<typeof ArkDialog.Content>, "style">
-> = (props) => {
-  const rest = omit(props, "class", "children");
+export const DialogContent: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
+  const api = useDialogContext();
+  const presence = usePresenceContext();
+  const rest = omit(props, "class", "children", "ref");
   return (
-    <ArkDialog.Content {...rest} class={serializeArkClass([dialogStyles.content, props.class])}>
-      {props.children}
-    </ArkDialog.Content>
+    <Show when={!presence().unmounted}>
+      <div
+        {...api().getContentProps()}
+        {...presence().presenceProps}
+        {...rest}
+        ref={(el) => {
+          untrack(() => presence().ref)(el);
+          if (typeof props.ref === "function") {
+            props.ref(el);
+          }
+        }}
+        class={[dialogStyles.content, props.class]}
+      >
+        {props.children}
+      </div>
+    </Show>
   );
 };
 
@@ -200,9 +228,9 @@ export const DialogFooter: ParentComponent<Omit<ComponentProps<"div">, "style">>
 export type DialogPortalProps = ComponentProps<typeof SolidPortal>;
 
 export const DialogPortal: ParentComponent<DialogPortalProps> = (props) => {
-  const dialogContext = useDialogContext();
+  const presence = usePresenceContext();
   return (
-    <Show when={!isServer && dialogContext().open}>
+    <Show when={!isServer && (presence().present || !presence().unmounted)}>
       <SolidPortal {...props}>{props.children}</SolidPortal>
     </Show>
   );

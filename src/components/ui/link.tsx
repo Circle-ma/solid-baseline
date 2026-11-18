@@ -1,7 +1,63 @@
 import { useHref, useInRouter, useLinkState } from "@solidjs/router";
 import type { ComponentProps } from "@solidjs/web";
 import { omit, type ParentComponent } from "solid-js";
-import { navLink } from "styled-system/recipes";
+import { type LinkVariant, link, navLink } from "styled-system/recipes";
+
+export interface LinkProps extends Omit<ComponentProps<"a">, "style" | "href"> {
+  href: string;
+  /** Opens in a new tab with `rel="noopener noreferrer"` automatically applied. */
+  external?: boolean;
+  variant?: LinkVariant["variant"];
+  size?: LinkVariant["size"];
+}
+
+function mergeExternalRel(rel: string | undefined): string {
+  const tokens = new Set((rel ?? "").split(/\s+/).filter(Boolean));
+  tokens.add("noopener");
+  tokens.add("noreferrer");
+  return Array.from(tokens).join(" ");
+}
+
+/**
+ * Inline & External Hyperlink Primitive
+ * Separated from `<NavLink>` (which is dedicated to SPA route navigation).
+ * Automatically hardens `external` links with `target="_blank"` and `rel="noopener noreferrer"`.
+ */
+export const Link: ParentComponent<LinkProps> = (props) => {
+  const rest = omit(
+    props,
+    "href",
+    "external",
+    "variant",
+    "size",
+    "target",
+    "rel",
+    "class",
+    "children",
+  );
+
+  return (
+    <a
+      href={props.href}
+      target={props.external ? (props.target ?? "_blank") : props.target}
+      rel={
+        props.external
+          ? mergeExternalRel(typeof props.rel === "string" ? props.rel : undefined)
+          : props.rel
+      }
+      {...rest}
+      class={[
+        link({
+          variant: props.variant,
+          size: props.size,
+        }),
+        props.class,
+      ]}
+    >
+      {props.children}
+    </a>
+  );
+};
 
 export interface NavLinkProps extends Omit<ComponentProps<"a">, "style" | "href"> {
   href: string;

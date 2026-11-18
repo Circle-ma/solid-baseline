@@ -57,13 +57,7 @@ export const ThemeToggle: Component = () => {
   };
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      aria-label="Toggle color theme"
-      title="Toggle color theme"
-      onClick={toggleTheme}
-    >
+    <Button variant="ghost" size="sm" onClick={toggleTheme}>
       <span class={showInDarkClass}>
         <Icon size="sm">
           <circle cx="12" cy="12" r="4" />

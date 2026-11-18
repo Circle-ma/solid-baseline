@@ -1,7 +1,8 @@
 import type { ComponentProps } from "@solidjs/web";
 import type { Component } from "solid-js";
-import { flush, omit, untrack } from "solid-js";
+import { omit, onFlush, Show, untrack } from "solid-js";
 import { type InputVariant, input } from "styled-system/recipes";
+import { invokeTextInputHandler, restoreTextSelectionRange } from "./_form-helpers";
 
 export interface InputProps extends Omit<ComponentProps<"input">, "style" | "size"> {
   size?: InputVariant["size"];
@@ -14,12 +15,7 @@ type InputElementEvent = Parameters<
   Extract<ComponentProps<"input">["onInput"], (...args: never[]) => unknown>
 >[0];
 
-interface InputBaseProps extends InputProps {
-  valueBinding: { value: string } | { defaultValue?: string };
-  onInputEvent: (e: InputElementEvent) => void;
-}
-
-const InputBase: Component<InputBaseProps> = (props) => {
+const ControlledInput: Component<InputProps> = (props) => {
   const rest = omit(
     props,
     "size",
@@ -29,15 +25,36 @@ const InputBase: Component<InputBaseProps> = (props) => {
     "value",
     "defaultValue",
     "onInput",
-    "valueBinding",
-    "onInputEvent",
+    "aria-invalid",
   );
+
+  const handleInput = (e: InputElementEvent) => {
+    const el = e.currentTarget;
+    const prevValue = el.value;
+    const prevStart = el.selectionStart;
+    const prevEnd = el.selectionEnd;
+
+    props.onValueChange?.(prevValue);
+    invokeTextInputHandler(props.onInput, e);
+
+    // Reconcile after Solid's batched microtask flush without forcing a synchronous flush().
+    onFlush(() => {
+      const committed = String(untrack(() => props.value) ?? "");
+      if (el.value !== committed) {
+        el.value = committed;
+        restoreTextSelectionRange(el, prevStart, prevEnd, prevValue.length, committed.length);
+      } else if (prevValue !== committed) {
+        restoreTextSelectionRange(el, prevStart, prevEnd, prevValue.length, committed.length);
+      }
+    });
+  };
 
   return (
     <input
       {...rest}
-      {...props.valueBinding}
-      onInput={(e) => props.onInputEvent(e)}
+      value={String(props.value ?? "")}
+      aria-invalid={props["aria-invalid"] ?? (props.invalid ? "true" : undefined)}
+      onInput={handleInput}
       class={[
         input({
           size: props.size,
@@ -49,59 +66,58 @@ const InputBase: Component<InputBaseProps> = (props) => {
   );
 };
 
-const ControlledInput: Component<InputProps> = (props) => {
-  const valueBinding = {
-    get value() {
-      return String(props.value ?? "");
-    },
-  };
-
-  const handleInput = (e: InputElementEvent) => {
-    const el = e.currentTarget;
-    props.onValueChange?.(el.value);
-    if (typeof props.onInput === "function") {
-      props.onInput(e);
-    }
-    flush();
-    const committed = String(untrack(() => props.value) ?? "");
-    if (el.value !== committed) {
-      el.value = committed;
-    }
-  };
-
-  return <InputBase {...props} valueBinding={valueBinding} onInputEvent={handleInput} />;
-};
-
 const UncontrolledInput: Component<InputProps> = (props) => {
-  const valueBinding = {
-    get defaultValue() {
-      return props.defaultValue;
-    },
-  };
+  const rest = omit(
+    props,
+    "size",
+    "invalid",
+    "onValueChange",
+    "class",
+    "value",
+    "defaultValue",
+    "onInput",
+    "aria-invalid",
+  );
 
   const handleInput = (e: InputElementEvent) => {
     props.onValueChange?.(e.currentTarget.value);
-    if (typeof props.onInput === "function") {
-      props.onInput(e);
-    }
+    invokeTextInputHandler(props.onInput, e);
   };
 
-  return <InputBase {...props} valueBinding={valueBinding} onInputEvent={handleInput} />;
+  return (
+    <input
+      {...rest}
+      defaultValue={props.defaultValue}
+      aria-invalid={props["aria-invalid"] ?? (props.invalid ? "true" : undefined)}
+      onInput={handleInput}
+      class={[
+        input({
+          size: props.size,
+          invalid: props.invalid,
+        }),
+        props.class,
+      ]}
+    />
+  );
 };
 
 /**
  * Systematic Input Primitive
  *
  * Synchronously routes controlled (`value` provided) and uncontrolled (`defaultValue` only)
- * modes to dedicated branches without `<Show>` overhead:
- * - Controlled mode: binds directly to `props.value` and reconciles `e.currentTarget.value`
- *   after `onValueChange` + `flush()` so rejected or formatted input stays strictly synchronized.
+ * modes to dedicated branches with fine-grained attribute bindings:
+ * - Controlled mode: binds directly to `props.value` and reconciles DOM drift inside `onFlush()`
+ *   (preserving Solid 2.0 microtask batching and selection range) when a parent rejects or formats input.
  * - Uncontrolled mode: binds `defaultValue` only so sibling attribute updates (such as `invalid`
  *   or `class`) never trigger `UNCOMMITTED_INPUT_OVERWRITTEN`.
  */
 export const Input: Component<InputProps> = (props) => {
   const isControlled = untrack(() => props.value !== undefined);
-  return <>{isControlled ? <ControlledInput {...props} /> : <UncontrolledInput {...props} />}</>;
+  return (
+    <Show when={isControlled} fallback={<UncontrolledInput {...props} />}>
+      <ControlledInput {...props} />
+    </Show>
+  );
 };
 
 export default Input;

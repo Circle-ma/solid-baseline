@@ -1,103 +1,11 @@
-import { defineConfig, definePlugin, defineRecipe, defineSlotRecipe } from "@pandacss/dev";
+import { defineConfig, defineRecipe, defineSlotRecipe } from "@pandacss/dev";
 
-/**
- * Aligns Panda CSS 2.5 generated Solid JSX factory with Solid 2.0 GA:
- * - Routes `Dynamic`/`createComponent` imports to `@solidjs/web`
- * - Uses Solid 2.0 `merge` and Panda's getter-preserving `splitProps` from `../helpers`
- * - Eliminates untracked `createMemo` reads inside `StyledComponent` (`STRICT_READ_UNTRACKED`)
- * - Preserves Solid 2.0 native array/object `class` values on JSX primitives
- * - Imports `ComponentProps` and `JSX` from `@solidjs/web` in `types/jsx.d.ts`
- */
-const solid2JsxCompatPlugin = definePlugin({
-  name: "solid-2-jsx-compat",
-  hooks: {
-    "codegen:prepare": ({ artifacts }) => {
-      for (const artifact of artifacts) {
-        for (const file of artifact.files) {
-          if (file.path.endsWith("types/jsx.d.ts")) {
-            file.code = file.code.replace(
-              "import type { Accessor, Component, ComponentProps, JSX } from 'solid-js';",
-              "import type { Accessor, Component } from 'solid-js';\nimport type { ComponentProps, JSX } from '@solidjs/web';",
-            );
-          } else if (file.path.endsWith("jsx/factory.js")) {
-            file.code = file.code
-              .replace(
-                "import { createMemo, mergeProps, splitProps } from 'solid-js';",
-                "import { merge as mergeProps } from 'solid-js';",
-              )
-              .replace(
-                "import { Dynamic, createComponent } from 'solid-js/web';",
-                "import { Dynamic, createComponent } from '@solidjs/web';",
-              )
-              .replace(
-                "import { normalizeHTMLProps } from '../helpers';",
-                "import { normalizeHTMLProps, splitProps } from '../helpers';",
-              )
-              .replace(
-                "const forwardedKeys = createMemo(() => Object.keys(aProps).filter((prop) => __shouldForwardProps__(prop)))",
-                "const forwardedKeys = Object.keys(aProps).filter((prop) => __shouldForwardProps__(prop))",
-              )
-              .replace(
-                "const [forwardedProps, variantProps, bProps] = splitProps(aProps, forwardedKeys(), variantKeys)",
-                "const [forwardedProps, variantProps, bProps] = splitProps(aProps, forwardedKeys, variantKeys)",
-              )
-              .replace(
-                "const cssPropKeys = createMemo(() => Object.keys(bProps).filter((prop) => isCssProperty(prop)))",
-                "const cssPropKeys = Object.keys(bProps).filter((prop) => isCssProperty(prop))",
-              )
-              .replace(
-                "const [styleProps, elementProps] = splitProps(bProps, cssPropKeys())",
-                "const [styleProps, elementProps] = splitProps(bProps, cssPropKeys)",
-              )
-              .replace(
-                "if (localProps.unstyled) return cx(hasStyles && serializeSplitStyles(propStyles, cssStyles), localProps.class, localProps.className)",
-                "if (localProps.unstyled) return [hasStyles ? serializeSplitStyles(propStyles, cssStyles) : undefined, localProps.class, localProps.className]",
-              )
-              .replace(
-                `        return cx(
-          __cvaFn__(variantProps, false),
-          compoundVariantClasses,
-          hasStyles && serializeSplitStyles(propStyles, cssStyles),
-          localProps.class,
-          localProps.className,
-        )`,
-                `        return [
-          cx(
-            __cvaFn__(variantProps, false),
-            compoundVariantClasses,
-            hasStyles && serializeSplitStyles(propStyles, cssStyles),
-          ),
-          localProps.class,
-          localProps.className,
-        ]`,
-              )
-              .replace(
-                `      return cx(
-        hasStyles ? serializeSplitStyles(propStyles, cssStyles, getRaw(variantProps)) : __cvaFn__(variantProps),
-        localProps.class,
-        localProps.className,
-      )`,
-                `      return [
-        hasStyles ? serializeSplitStyles(propStyles, cssStyles, getRaw(variantProps)) : __cvaFn__(variantProps),
-        localProps.class,
-        localProps.className,
-      ]`,
-              );
-          } else if (file.path.includes("jsx/") && file.path.endsWith(".js")) {
-            file.code = file.code
-              .replace(
-                "import { createMemo, mergeProps, splitProps } from 'solid-js';",
-                "import { merge as mergeProps } from 'solid-js';\nimport { splitProps } from '../helpers';",
-              )
-              .replaceAll("'solid-js/web'", "'@solidjs/web'")
-              .replaceAll("/* @__PURE__ */ function ", "function ");
-          }
-        }
-      }
-      return artifacts;
-    },
-  },
-});
+const focusVisibleRing = {
+  outlineWidth: "2px",
+  outlineStyle: "solid",
+  outlineColor: "accent.default",
+  outlineOffset: "2px",
+} as const;
 
 const buttonRecipe = defineRecipe({
   className: "button",
@@ -117,12 +25,7 @@ const buttonRecipe = defineRecipe({
     _active: {
       transform: "scale(0.98)",
     },
-    _focusVisible: {
-      outlineWidth: "2px",
-      outlineStyle: "solid",
-      outlineColor: "accent.default",
-      outlineOffset: "2px",
-    },
+    _focusVisible: focusVisibleRing,
     _disabled: {
       opacity: 0.5,
       cursor: "not-allowed",
@@ -383,7 +286,7 @@ const textRecipe = defineRecipe({
         fontFamily: "mono",
         fontVariantNumeric: "tabular-nums",
         bg: "bg.subtle",
-        borderRadius: "sm",
+        borderRadius: "l1",
         px: "1.5",
         py: "0.5",
         borderWidth: "1px",
@@ -451,15 +354,15 @@ const inputRecipe = defineRecipe({
     borderWidth: "1px",
     borderStyle: "solid",
     borderColor: "border.default",
-    bg: "bg.default",
+    bg: "bg.elevated",
     color: "fg.default",
     outline: "none",
     transitionProperty: "colors, border-color, box-shadow",
     transitionDuration: "fast",
     _placeholder: { color: "fg.subtle" },
     _focusVisible: {
+      ...focusVisibleRing,
       borderColor: "accent.default",
-      boxShadow: "focusRing",
     },
     _disabled: {
       opacity: 0.5,
@@ -477,13 +380,144 @@ const inputRecipe = defineRecipe({
         borderColor: "danger.border",
         _focusVisible: {
           borderColor: "danger.default",
-          boxShadow: "focusRingDanger",
+          outlineColor: "danger.default",
         },
       },
     },
   },
   defaultVariants: {
     size: "md",
+  },
+});
+
+const textareaRecipe = defineRecipe({
+  className: "textarea",
+  description: "Standard multi-line textarea recipe aligned with input tokens",
+  jsx: ["Textarea"],
+  base: {
+    w: "full",
+    borderRadius: "l2",
+    borderWidth: "1px",
+    borderStyle: "solid",
+    borderColor: "border.default",
+    bg: "bg.elevated",
+    color: "fg.default",
+    outline: "none",
+    lineHeight: "relaxed",
+    transitionProperty: "colors, border-color",
+    transitionDuration: "fast",
+    _placeholder: { color: "fg.subtle" },
+    _focusVisible: {
+      ...focusVisibleRing,
+      borderColor: "accent.default",
+    },
+    _disabled: {
+      opacity: 0.5,
+      cursor: "not-allowed",
+    },
+  },
+  variants: {
+    size: {
+      sm: { minH: "16", px: "2.5", py: "1.5", textStyle: "xs" },
+      md: { minH: "24", px: "3", py: "2", textStyle: "sm" },
+      lg: { minH: "32", px: "4", py: "2.5", textStyle: "md" },
+    },
+    resize: {
+      none: { resize: "none" },
+      vertical: { resize: "vertical" },
+      both: { resize: "both" },
+    },
+    invalid: {
+      true: {
+        borderColor: "danger.border",
+        _focusVisible: {
+          borderColor: "danger.default",
+          outlineColor: "danger.default",
+        },
+      },
+    },
+  },
+  defaultVariants: {
+    size: "md",
+    resize: "vertical",
+  },
+});
+
+const linkRecipe = defineRecipe({
+  className: "link",
+  description: "Inline and external hyperlink recipe",
+  jsx: ["Link"],
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "1",
+    borderRadius: "l1",
+    fontWeight: "medium",
+    cursor: "pointer",
+    outline: "none",
+    transitionProperty: "colors, opacity",
+    transitionDuration: "fast",
+    textUnderlineOffset: "3px",
+    _focusVisible: focusVisibleRing,
+  },
+  variants: {
+    variant: {
+      default: {
+        color: "accent.default",
+        textDecoration: "none",
+        _hover: {
+          color: "accent.emphasized",
+          textDecoration: "underline",
+        },
+      },
+      underline: {
+        color: "fg.default",
+        textDecoration: "underline",
+        _hover: {
+          color: "accent.emphasized",
+        },
+      },
+      muted: {
+        color: "fg.muted",
+        textDecoration: "none",
+        _hover: {
+          color: "fg.default",
+          textDecoration: "underline",
+        },
+      },
+    },
+    size: {
+      xs: { textStyle: "xs" },
+      sm: { textStyle: "sm" },
+      md: { textStyle: "md" },
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+
+const skeletonRecipe = defineRecipe({
+  className: "skeleton",
+  description: "Accessible loading placeholder skeleton recipe",
+  jsx: ["Skeleton"],
+  base: {
+    display: "block",
+    bg: "bg.muted",
+    animation: "pulse",
+    userSelect: "none",
+    pointerEvents: "none",
+  },
+  variants: {
+    variant: {
+      text: { h: "4", w: "full", borderRadius: "l1" },
+      heading: { h: "6", w: "48", borderRadius: "l1" },
+      block: { h: "24", w: "full", borderRadius: "l2" },
+      circle: { w: "10", h: "10", borderRadius: "full" },
+    },
+  },
+  defaultVariants: {
+    variant: "text",
   },
 });
 
@@ -503,17 +537,15 @@ const navLinkRecipe = defineRecipe({
     transitionProperty: "colors, background-color",
     transitionDuration: "fast",
     outline: "none",
-    _focusVisible: {
-      outlineWidth: "2px",
-      outlineStyle: "solid",
-      outlineColor: "accent.default",
-      outlineOffset: "2px",
+    _focusVisible: focusVisibleRing,
+    "&[data-pending]": {
+      opacity: 0.7,
     },
   },
   variants: {
     active: {
       true: {
-        bg: "bg.default",
+        bg: "bg.elevated",
         color: "fg.default",
         fontWeight: "semibold",
       },
@@ -558,24 +590,19 @@ const iconRecipe = defineRecipe({
 const cardSlotRecipe = defineSlotRecipe({
   className: "card",
   description: "Card component slot recipe",
+  jsx: ["Card.Root", "CardRoot"],
   slots: ["root", "header", "title", "description", "body", "footer"],
   base: {
     root: {
       display: "flex",
       flexDirection: "column",
-      gap: "6",
-      p: "6",
       borderRadius: "l3",
       borderWidth: "1px",
       borderStyle: "solid",
-      borderColor: "border.subtle",
-      bg: "bg.default",
-      boxShadow: "card",
     },
     header: {
       display: "flex",
       flexDirection: "column",
-      gap: "1.5",
       w: "full",
     },
     title: {
@@ -592,7 +619,6 @@ const cardSlotRecipe = defineSlotRecipe({
     body: {
       display: "flex",
       flexDirection: "column",
-      gap: "4",
       w: "full",
     },
     footer: {
@@ -600,9 +626,50 @@ const cardSlotRecipe = defineSlotRecipe({
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "flex-end",
-      gap: "3",
       w: "full",
     },
+  },
+  variants: {
+    variant: {
+      outline: {
+        root: {
+          bg: "bg.default",
+          borderColor: "border.default",
+          boxShadow: "card",
+        },
+      },
+      elevated: {
+        root: {
+          bg: "bg.elevated",
+          borderColor: "border.subtle",
+          boxShadow: "elevated",
+        },
+      },
+      subtle: {
+        root: {
+          bg: "bg.subtle",
+          borderColor: "border.subtle",
+        },
+      },
+    },
+    density: {
+      normal: {
+        root: { gap: "6", p: "6" },
+        header: { gap: "1.5" },
+        body: { gap: "4" },
+        footer: { gap: "3" },
+      },
+      compact: {
+        root: { gap: "4", p: "4" },
+        header: { gap: "1" },
+        body: { gap: "3" },
+        footer: { gap: "2" },
+      },
+    },
+  },
+  defaultVariants: {
+    variant: "outline",
+    density: "normal",
   },
 });
 
@@ -648,7 +715,7 @@ const dialogSlotRecipe = defineSlotRecipe({
       position: "relative",
       w: "full",
       maxW: "md",
-      bg: "bg.default",
+      bg: "bg.elevated",
       p: "6",
       borderRadius: "l3",
       borderWidth: "1px",
@@ -718,12 +785,7 @@ const dialogSlotRecipe = defineSlotRecipe({
       transitionProperty: "colors",
       transitionDuration: "fast",
       _hover: { color: "fg.default", bg: "bg.subtle" },
-      _focusVisible: {
-        outlineWidth: "2px",
-        outlineStyle: "solid",
-        outlineColor: "accent.default",
-        outlineOffset: "2px",
-      },
+      _focusVisible: focusVisibleRing,
     },
   },
 });
@@ -733,7 +795,6 @@ export default defineConfig({
   strictTokens: true,
   strictPropertyValues: true,
   presets: ["@pandacss/preset-base", "@pandacss/preset-panda"],
-  plugins: [solid2JsxCompatPlugin],
   theme: {
     extend: {
       recipes: {
@@ -741,6 +802,9 @@ export default defineConfig({
         badge: badgeRecipe,
         text: textRecipe,
         input: inputRecipe,
+        textarea: textareaRecipe,
+        link: linkRecipe,
+        skeleton: skeletonRecipe,
         navLink: navLinkRecipe,
         icon: iconRecipe,
       },
@@ -769,12 +833,10 @@ export default defineConfig({
       tokens: {
         fonts: {
           heading: {
-            value:
-              "'Google Sans Flex', 'MiSans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif",
+            value: "'Google Sans Flex', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif",
           },
           body: {
-            value:
-              "'Geist', 'MiSans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif",
+            value: "'Geist', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif",
           },
           mono: {
             value: "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
@@ -811,26 +873,20 @@ export default defineConfig({
         shadows: {
           card: {
             value: {
-              base: "{shadows.sm}",
+              base: "{shadows.xs}",
               _dark: "inset 0 1px 0 0 {colors.white/6}, 0 4px 12px {colors.black/40}",
+            },
+          },
+          elevated: {
+            value: {
+              base: "{shadows.md}",
+              _dark: "inset 0 1px 0 0 {colors.white/8}, 0 8px 24px {colors.black/50}",
             },
           },
           modal: {
             value: {
               base: "{shadows.xl}",
-              _dark: "inset 0 1px 0 0 {colors.white/6}, 0 12px 28px {colors.black/50}",
-            },
-          },
-          focusRing: {
-            value: {
-              base: "0 0 0 3px {colors.slate.900/15}",
-              _dark: "0 0 0 3px {colors.slate.100/20}",
-            },
-          },
-          focusRingDanger: {
-            value: {
-              base: "0 0 0 3px {colors.red.600/20}",
-              _dark: "0 0 0 3px {colors.red.500/25}",
+              _dark: "inset 0 1px 0 0 {colors.white/8}, 0 12px 28px {colors.black/55}",
             },
           },
         },
@@ -838,13 +894,13 @@ export default defineConfig({
           bg: {
             canvas: {
               value: {
-                base: "{colors.slate.50}",
+                base: "{colors.slate.100}",
                 _dark: "{colors.slate.950}",
               },
             },
             default: {
               value: {
-                base: "{colors.white}",
+                base: "{colors.slate.50}",
                 _dark: "{colors.slate.900}",
               },
             },
@@ -856,8 +912,8 @@ export default defineConfig({
             },
             subtle: {
               value: {
-                base: "{colors.slate.100}",
-                _dark: "{colors.slate.800}",
+                base: "{colors.slate.200/60}",
+                _dark: "{colors.slate.800/70}",
               },
             },
             muted: {
@@ -1088,6 +1144,26 @@ export default defineConfig({
     removeUnusedTokens: true,
     removeUnusedKeyframes: true,
     smartCompoundVariants: true,
+  },
+  staticCss: {
+    // Guarantee default fallback rules for layout primitives in `src/components/ui/layout.tsx`
+    // even when all sample routes are removed and pages render bare `<VStack>`, `<HStack>`,
+    // `<Grid>`, `<Container>`, or `<Divider />` with no explicit props.
+    patterns: {
+      container: [{ properties: { w: ["full"] } }],
+      vstack: [{ properties: { gap: ["4"], alignItems: ["stretch"] } }],
+      hstack: [{ properties: { gap: ["3"], alignItems: ["center"] } }],
+      grid: [{ properties: { columns: [1], gap: ["6"], w: ["full"] } }],
+      divider: [
+        {
+          properties: {
+            orientation: ["horizontal"],
+            thickness: ["1px"],
+            color: ["border.subtle"],
+          },
+        },
+      ],
+    },
   },
   globalCss: {
     ":root": {
