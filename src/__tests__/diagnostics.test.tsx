@@ -9,7 +9,17 @@ import { createRouter, defineRoute, defineRoutes, memoryHistory } from "@solidjs
 import { render } from "@solidjs/web";
 import { action, createMemo, createSignal, flush, isPending, untrack } from "solid-js";
 import { describe, expect, it } from "vitest";
-import { AsyncBoundary, Box, Dialog, HStack, Input, NavLink, Text } from "~/components/ui";
+import { createAppRouter } from "~/App";
+import {
+  AsyncBoundary,
+  Box,
+  Dialog,
+  HStack,
+  Input,
+  NavLink,
+  Text,
+  ThemeToggle,
+} from "~/components/ui";
 import {
   OfflineSandboxSpacetimeAdapter,
   RpcProvider,
@@ -488,6 +498,43 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
     assertBudget(artifact, { maxSilentHoldMs: 0 });
     expect(container.textContent).toContain("Recovered Content");
 
+    dispose();
+    container.remove();
+  });
+
+  // Scenario 8: Zero-flicker ThemeToggle (pure CSS _dark + cookie sync) & SSR-isolated createAppRouter
+  it("Scenario 8: ThemeToggle renders both icons without hydration flicker, syncs cookie, and createAppRouter isolates instances", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    document.documentElement.classList.remove("dark");
+
+    const dispose = render(() => <ThemeToggle />, container);
+    const button = container.querySelector("button");
+    expect(button).not.toBeNull();
+    // Both Sun and Moon <Icon> SVGs are rendered upfront so CSS `_dark` swaps them with zero flicker
+    expect(container.querySelectorAll("svg").length).toBe(2);
+
+    const { artifact } = await captureArtifact(
+      async () => {
+        button?.click();
+        flush();
+      },
+      { scenario: "scenario-8-theme-toggle-zero-flicker" },
+    );
+
+    expect(artifact).toBeDefined();
+    expectNoDiagnostics(artifact);
+    expectNoWaste(artifact);
+    assertBudget(artifact, { maxSilentHoldMs: 0 });
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(document.cookie).toContain("theme=dark");
+
+    // SSR isolation: each createAppRouter() call returns an independent Router component
+    const routerA = createAppRouter();
+    const routerB = createAppRouter();
+    expect(routerA).not.toBe(routerB);
+
+    document.documentElement.classList.remove("dark");
     dispose();
     container.remove();
   });

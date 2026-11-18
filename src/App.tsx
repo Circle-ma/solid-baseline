@@ -28,7 +28,9 @@ export const routes = defineRoutes([
   }),
 ]);
 
-export const Router = createRouter({ routes });
+export function createAppRouter() {
+  return createRouter({ routes });
+}
 
 function NavigationBar() {
   return (
@@ -56,6 +58,7 @@ function NavigationBar() {
 }
 
 export default function App() {
+  const Router = createAppRouter();
   return (
     <Router>
       {(props) => (

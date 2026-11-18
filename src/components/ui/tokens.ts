@@ -148,6 +148,11 @@ export const Z_INDEX = {
 
 export type ZIndexRailToken = ZIndexToken;
 
+export const SHADOWS = {
+  card: "card",
+  modal: "modal",
+} as const satisfies Record<string, ShadowToken>;
+
 export type ShadowRailToken = ShadowToken;
 
 /**

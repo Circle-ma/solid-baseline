@@ -438,6 +438,28 @@ const navLinkRecipe = defineRecipe({
   },
 });
 
+const iconRecipe = defineRecipe({
+  className: "icon",
+  description: "Canonical SVG icon primitive recipe",
+  jsx: ["Icon"],
+  base: {
+    display: "inline-block",
+    flexShrink: 0,
+    verticalAlign: "middle",
+    color: "currentColor",
+  },
+  variants: {
+    size: {
+      sm: { w: "4", h: "4" },
+      md: { w: "5", h: "5" },
+      lg: { w: "6", h: "6" },
+    },
+  },
+  defaultVariants: {
+    size: "sm",
+  },
+});
+
 const cardSlotRecipe = defineSlotRecipe({
   className: "card",
   description: "Card component slot recipe",
@@ -453,10 +475,7 @@ const cardSlotRecipe = defineSlotRecipe({
       borderStyle: "solid",
       borderColor: "border.subtle",
       bg: "bg.default",
-      boxShadow: {
-        base: "sm",
-        _dark: "inset 0 1px 0 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.4)",
-      },
+      boxShadow: "card",
     },
     header: {
       display: "flex",
@@ -540,10 +559,7 @@ const dialogSlotRecipe = defineSlotRecipe({
       borderWidth: "1px",
       borderStyle: "solid",
       borderColor: "border.subtle",
-      boxShadow: {
-        base: "xl",
-        _dark: "inset 0 1px 0 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.4)",
-      },
+      boxShadow: "modal",
       display: "flex",
       flexDirection: "column",
       gap: "5",
@@ -630,6 +646,7 @@ export default defineConfig({
         text: textRecipe,
         input: inputRecipe,
         navLink: navLinkRecipe,
+        icon: iconRecipe,
       },
       slotRecipes: {
         card: cardSlotRecipe,
@@ -695,6 +712,20 @@ export default defineConfig({
         },
       },
       semanticTokens: {
+        shadows: {
+          card: {
+            value: {
+              base: "{shadows.sm}",
+              _dark: "inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 4px 12px rgba(0, 0, 0, 0.4)",
+            },
+          },
+          modal: {
+            value: {
+              base: "{shadows.xl}",
+              _dark: "inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 12px 28px rgba(0, 0, 0, 0.5)",
+            },
+          },
+        },
         colors: {
           bg: {
             canvas: {
@@ -951,6 +982,15 @@ export default defineConfig({
     smartCompoundVariants: true,
   },
   globalCss: {
+    ":root": {
+      colorScheme: "light dark",
+      "&:has(> head > meta[name='color-scheme'][content='dark'])": {
+        colorScheme: "dark",
+      },
+      "&:has(> head > meta[name='color-scheme'][content='light'])": {
+        colorScheme: "light",
+      },
+    },
     body: {
       fontFamily: "body",
       WebkitFontSmoothing: "antialiased",

@@ -3,6 +3,7 @@ export * from "./boundary";
 export * from "./button";
 export * from "./card";
 export * from "./dialog";
+export * from "./icon";
 export * from "./input";
 export * from "./layout";
 export * from "./link";

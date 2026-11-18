@@ -1,9 +1,10 @@
 import { Dialog as ArkDialog, useDialogContext } from "@ark-ui/solid/dialog";
-import { isServer, Portal as SolidPortal } from "@solidjs/web";
-import type { ComponentProps, ParentComponent } from "solid-js";
+import { type ComponentProps, isServer, Portal as SolidPortal } from "@solidjs/web";
+import type { ParentComponent } from "solid-js";
 import { Show } from "solid-js";
 import { cx } from "styled-system/css";
 import { type ButtonVariant, button, dialog } from "styled-system/recipes";
+import { Icon } from "./icon";
 import { omitProps, toClass } from "./tokens";
 
 const dialogStyles = dialog();
@@ -96,19 +97,9 @@ export const DialogCloseTrigger: ParentComponent<DialogCloseTriggerProps> = (pro
       {props.asChild
         ? undefined
         : (props.children ?? (
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 15 15"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.75"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
+            <Icon size="sm" viewBox="0 0 15 15" stroke-width="1.75">
               <path d="M11.5 3.5L3.5 11.5M3.5 3.5L11.5 11.5" />
-            </svg>
+            </Icon>
           ))}
     </ArkDialog.CloseTrigger>
   );
