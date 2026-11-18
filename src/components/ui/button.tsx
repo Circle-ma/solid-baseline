@@ -1,4 +1,5 @@
-import type { ComponentProps, ParentComponent } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
+import type { ParentComponent } from "solid-js";
 import { cx } from "styled-system/css";
 import { type ButtonVariant, button } from "styled-system/recipes";
 import { omitProps, toClass } from "./tokens";

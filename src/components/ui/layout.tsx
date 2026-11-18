@@ -1,5 +1,5 @@
-import { Dynamic, type JSX } from "@solidjs/web";
-import type { ComponentProps, ParentComponent } from "solid-js";
+import { type ComponentProps, Dynamic, type JSX } from "@solidjs/web";
+import type { ParentComponent } from "solid-js";
 import { cx } from "styled-system/css";
 import { box, container, divider, grid, hstack, vstack } from "styled-system/patterns";
 import type { ConditionalValue, SystemProperties } from "styled-system/types/system";

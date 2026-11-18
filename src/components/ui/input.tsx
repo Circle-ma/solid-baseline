@@ -1,4 +1,5 @@
-import type { Component, ComponentProps } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
+import type { Component } from "solid-js";
 import { createSignal, Show, untrack } from "solid-js";
 import { cx } from "styled-system/css";
 import { type InputVariant, input } from "styled-system/recipes";

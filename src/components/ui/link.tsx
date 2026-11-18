@@ -1,5 +1,6 @@
 import { useHref, useInRouter, useLinkState } from "@solidjs/router";
-import { type ComponentProps, createMemo, type ParentComponent } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
+import { createMemo, type ParentComponent } from "solid-js";
 import { cx } from "styled-system/css";
 import { navLink } from "styled-system/recipes";
 import { omitProps, toClass } from "./tokens";

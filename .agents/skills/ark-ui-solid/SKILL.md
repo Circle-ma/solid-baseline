@@ -14,6 +14,7 @@ This starter pairs Ark UI with native Panda CSS 2.4 design tokens and slot recip
 ### Rule 1: Autonomous Lifecycle via Encapsulated `<Dialog.Portal>`
 
 In this framework, `<Dialog.Portal>` internally binds to Ark UI's `useDialogContext()` and `<Show when={dialog().open}>`:
+
 ```tsx
 <Dialog.Root lazyMount unmountOnExit>
   <Dialog.Trigger variant="outline">Open Dialog</Dialog.Trigger>
@@ -45,6 +46,7 @@ _Why?_ Zag.js handles the state machine (ESC keys, focus restoration, ARIA attri
 ### Rule 2: DO NOT Use `asChild` as a Boolean Flag
 
 In React / Radix libraries, `asChild` is commonly used as a boolean flag:
+
 ```tsx
 // ❌ WRONG (React pattern - will crash in Ark UI Solid with TypeError: localProps.asChild is not a function)
 <Dialog.Trigger asChild>
@@ -54,12 +56,14 @@ In React / Radix libraries, `asChild` is commonly used as a boolean flag:
 
 In **Ark UI Solid**, Ark components are already polymorphic DOM elements (`ark.button`, `ark.div`, etc.).
 In our framework, style triggers typesafely with encapsulated variants or `<Button>`:
+
 ```tsx
 // ✅ RIGHT: Direct typesafe variants on framework primitives
 <Dialog.Trigger variant="outline">Open Dialog</Dialog.Trigger>;
 ```
 
 If you truly need custom rendering, `asChild` in Solid expects a **Render Prop function**:
+
 ```tsx
 // ✅ RIGHT (if using asChild, pass a function)
 <Dialog.Trigger
@@ -74,6 +78,7 @@ If you truly need custom rendering, `asChild` in Solid expects a **Render Prop f
 ### Rule 3: Import `<Portal>` from `@solidjs/web`
 
 In Solid 2.0, DOM utilities and `<Portal>` reside in `@solidjs/web`:
+
 ```tsx
 import { Portal } from "@solidjs/web";
 ```
@@ -81,6 +86,7 @@ import { Portal } from "@solidjs/web";
 ### Rule 4: Use Controlled and Uncontrolled Modals Idiomatically
 
 Ark UI components are self-managing by default via Zag.js state machines.
+
 ```tsx
 // Uncontrolled (recommended when external state sync is not required):
 <Dialog.Root defaultOpen={false}>
@@ -101,6 +107,7 @@ const [open, setOpen] = createSignal(false);
 
 Panda CSS 2.4 slot recipes generate typed slot classnames in `styled-system/recipes`.
 For example, our pre-composed dialog primitive uses `dialog()` slot recipe:
+
 ```tsx
 import { Dialog as ArkDialog } from "@ark-ui/solid/dialog";
 import { Portal } from "@solidjs/web";

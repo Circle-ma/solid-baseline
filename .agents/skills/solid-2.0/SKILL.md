@@ -63,6 +63,14 @@ Also:
   The memo's `equals` (default `===`) stops the re-run.
 - No writes inside a memo, effect compute, or component body (dev throws).
   Write from event handlers, `onSettled`, or actions.
+- Writes in one synchronous frame land together: if one starts async work
+  (a navigation, a refetch), the rest are held with it. To land a write on
+  its own (close a menu before calling `props.onSelect`), wrap it in
+  `onFlush(() => setOpen(false))`. Not `queueMicrotask` or `setTimeout`.
+- Hydration adopts server answers without re-asking, but runs each adopted
+  compute once to track reads with fake `Promise`/`fetch` that never settle.
+  Never store a promise or `import()` created inside a compute in a cache
+  that outlives it; cache resolved values, or start the load outside.
 - No reactive reads at the top of a component body; read in JSX, a memo, or
   `untrack`. Flow callbacks (`<For>`, `<Show>`, `<Match>`) are owners, not
   tracking scopes: read their accessor arguments in JSX, not at the top.
@@ -110,6 +118,6 @@ Also:
   `costs`, `end`).
 - Lint: `eslint-plugin-solid`, config `v2`
   (`import solid from "eslint-plugin-solid/configs/v2"`) or `v2-strict`.
-- Docs: https://v2.solidjs.com (Solid 2.0 docs; `/llms.txt` and
+- Docs: https://docs.solidjs.com (Solid 2.0 docs; `/llms.txt` and
   `/llms-full.txt` for agents). Migration guide: `documentation/solid-2.0/MIGRATION.md`
   in the repository.

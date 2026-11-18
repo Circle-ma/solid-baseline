@@ -18,11 +18,13 @@ Clients connect via WebSocket and synchronize local cache state in real time.
 ## 2. Code Generation Workflow
 
 SpacetimeDB generates type-safe TypeScript interfaces from your backend module:
+
 ```bash
 spacetime generate --lang typescript --out-dir src/module_bindings
 ```
 
 This generates:
+
 - Typed table interfaces (`tables`)
 - Typed reducers (`reducers`)
 - Typed connection builder (`DbConnection`)
@@ -69,6 +71,7 @@ export const conn = DbConnection.builder()
 ## 4. Invoking Transactions (Reducers)
 
 Reducers execute ACID transactions on the server:
+
 ```typescript
 export async function addTodo(text: string) {
   await conn.reducers.addTodo({ text });
