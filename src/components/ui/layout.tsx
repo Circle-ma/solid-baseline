@@ -1,18 +1,28 @@
-import { type ComponentProps, Dynamic, type JSX } from "@solidjs/web";
-import type { ParentComponent } from "solid-js";
-import { cx } from "styled-system/css";
-import { box, container, divider, grid, hstack, vstack } from "styled-system/patterns";
-import type { ConditionalValue, SystemProperties } from "styled-system/types/system";
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { merge, omit } from "solid-js";
 import {
-  type BorderColorToken,
-  type ForegroundToken,
-  omitProps,
-  type RadiusRailToken,
-  type ShadowRailToken,
-  type SpacingRailToken,
-  type SurfaceToken,
-  toClass,
-  type ZIndexRailToken,
+  Box as PandaBox,
+  type BoxProps as PandaBoxProps,
+  Container as PandaContainer,
+  type ContainerProps as PandaContainerProps,
+  Divider as PandaDivider,
+  type DividerProps as PandaDividerProps,
+  Grid as PandaGrid,
+  type GridProps as PandaGridProps,
+  HStack as PandaHStack,
+  type HstackProps as PandaHStackProps,
+  VStack as PandaVStack,
+  type VstackProps as PandaVStackProps,
+} from "styled-system/jsx";
+import type { ConditionalValue, SystemProperties } from "styled-system/types/system";
+import type {
+  BorderColorToken,
+  ForegroundToken,
+  RadiusRailToken,
+  ShadowRailToken,
+  SpacingRailToken,
+  SurfaceToken,
+  ZIndexRailToken,
 } from "./tokens";
 
 export type SemanticContainerTag =
@@ -23,15 +33,21 @@ export type SemanticContainerTag =
   | "header"
   | "footer"
   | "article"
+  | "aside"
   | "ul"
+  | "ol"
   | "li"
-  | "form";
+  | "dl"
+  | "dt"
+  | "dd"
+  | "form"
+  | "fieldset";
 
 /**
  * Unified Closed-World Layout Style Props
  * Single source of style tokens shared across Box, Container, VStack, HStack, and Grid.
  */
-export interface BaseStyleProps {
+export type BaseStyleProps = {
   position?: SystemProperties["position"];
   top?: SystemProperties["top"];
   bottom?: SystemProperties["bottom"];
@@ -65,229 +81,65 @@ export interface BaseStyleProps {
   ml?: "auto";
   mr?: "auto";
   mx?: "auto";
-}
+};
 
-export interface SemanticContainerProps
-  extends Omit<JSX.HTMLAttributes<HTMLElement>, "style" | "color">,
-    BaseStyleProps {
-  as?: SemanticContainerTag;
-}
-
-const BASE_STYLE_PROP_KEYS = [
-  "position",
-  "top",
-  "bottom",
-  "left",
-  "right",
-  "inset",
-  "zIndex",
-  "minH",
-  "maxH",
-  "minW",
-  "maxW",
-  "w",
-  "h",
-  "bg",
-  "color",
-  "p",
-  "px",
-  "py",
-  "borderWidth",
-  "borderStyle",
-  "borderColor",
-  "borderRadius",
-  "overflow",
-  "overflowX",
-  "overflowY",
-  "boxShadow",
-  "display",
-  "flex",
-  "flexGrow",
-  "flexShrink",
-  "ml",
-  "mr",
-  "mx",
-] as const satisfies readonly (keyof BaseStyleProps)[];
-
-/**
- * Separates closed-world style props from native HTML attributes using Solid 2.0 `omit`.
- * Reads style prop values lazily inside `getStyleProps()` so component bodies stay untracked.
- */
-function extractStyleProps<T extends SemanticContainerProps, K extends readonly (keyof T)[]>(
-  props: T,
-  ...extraKeys: K
-) {
-  const rest = omitProps(
-    props,
-    ...BASE_STYLE_PROP_KEYS,
-    ...extraKeys,
-    "as",
-    "class",
-    "children",
-    "style",
-  );
-
-  const getStyleProps = (): BaseStyleProps => {
-    const styles: Partial<Record<keyof BaseStyleProps, unknown>> = {};
-    for (const key of BASE_STYLE_PROP_KEYS) {
-      const val = props[key];
-      if (val !== undefined) {
-        styles[key] = val;
-      }
-    }
-    return styles as BaseStyleProps;
+export type SemanticContainerProps<T extends SemanticContainerTag = "div"> = Omit<
+  ComponentProps<T>,
+  "style" | "color" | keyof BaseStyleProps
+> &
+  BaseStyleProps & {
+    as?: T;
   };
 
-  return { getStyleProps, rest };
+export type BoxProps<T extends SemanticContainerTag = "div"> = SemanticContainerProps<T>;
+
+export function Box<T extends SemanticContainerTag = "div">(props: BoxProps<T>): JSX.Element {
+  return <PandaBox {...(props as PandaBoxProps)} />;
 }
 
-export type BoxProps = SemanticContainerProps;
+export type ContainerProps<T extends SemanticContainerTag = "div"> = SemanticContainerProps<T>;
 
-export const Box: ParentComponent<BoxProps> = (props) => {
-  const { getStyleProps, rest } = extractStyleProps(props);
-  return (
-    <Dynamic
-      component={props.as ?? "div"}
-      {...rest}
-      class={cx(
-        box({
-          ...getStyleProps(),
-          boxSizing: "border-box",
-        }),
-        toClass(props.class),
-      )}
-    >
-      {props.children}
-    </Dynamic>
-  );
-};
+export function Container<T extends SemanticContainerTag = "div">(
+  props: ContainerProps<T>,
+): JSX.Element {
+  return <PandaContainer w="full" {...(props as PandaContainerProps)} />;
+}
 
-export type ContainerProps = SemanticContainerProps;
-
-export const Container: ParentComponent<ContainerProps> = (props) => {
-  const { getStyleProps, rest } = extractStyleProps(props);
-  return (
-    <Dynamic
-      component={props.as ?? "div"}
-      {...rest}
-      class={cx(
-        container({
-          ...getStyleProps(),
-          w: props.w ?? "full",
-        }),
-        toClass(props.class),
-      )}
-    >
-      {props.children}
-    </Dynamic>
-  );
-};
-
-export interface VStackProps extends SemanticContainerProps {
+export type VStackProps<T extends SemanticContainerTag = "div"> = SemanticContainerProps<T> & {
   gap?: ConditionalValue<SpacingRailToken>;
   alignItems?: SystemProperties["alignItems"];
   justifyContent?: SystemProperties["justifyContent"];
-}
-
-export const VStack: ParentComponent<VStackProps> = (props) => {
-  const { getStyleProps, rest } = extractStyleProps(props, "gap", "alignItems", "justifyContent");
-  return (
-    <Dynamic
-      component={props.as ?? "div"}
-      {...rest}
-      class={cx(
-        vstack({
-          ...getStyleProps(),
-          gap: props.gap ?? "4",
-          alignItems: props.alignItems ?? "stretch",
-          justify: props.justifyContent,
-        }),
-        toClass(props.class),
-      )}
-    >
-      {props.children}
-    </Dynamic>
-  );
 };
 
-export interface HStackProps extends SemanticContainerProps {
+export function VStack<T extends SemanticContainerTag = "div">(props: VStackProps<T>): JSX.Element {
+  return <PandaVStack gap="4" alignItems="stretch" {...(props as PandaVStackProps)} />;
+}
+
+export type HStackProps<T extends SemanticContainerTag = "div"> = SemanticContainerProps<T> & {
   gap?: ConditionalValue<SpacingRailToken>;
   alignItems?: SystemProperties["alignItems"];
   justifyContent?: SystemProperties["justifyContent"];
   flexWrap?: SystemProperties["flexWrap"];
-}
-
-export const HStack: ParentComponent<HStackProps> = (props) => {
-  const { getStyleProps, rest } = extractStyleProps(
-    props,
-    "gap",
-    "alignItems",
-    "justifyContent",
-    "flexWrap",
-  );
-  return (
-    <Dynamic
-      component={props.as ?? "div"}
-      {...rest}
-      class={cx(
-        hstack({
-          ...getStyleProps(),
-          gap: props.gap ?? "3",
-          alignItems: props.alignItems ?? "center",
-          justify: props.justifyContent,
-          flexWrap: props.flexWrap,
-        }),
-        toClass(props.class),
-      )}
-    >
-      {props.children}
-    </Dynamic>
-  );
 };
 
-export interface GridProps extends SemanticContainerProps {
+export function HStack<T extends SemanticContainerTag = "div">(props: HStackProps<T>): JSX.Element {
+  return <PandaHStack gap="3" alignItems="center" {...(props as PandaHStackProps)} />;
+}
+
+export type GridProps<T extends SemanticContainerTag = "div"> = SemanticContainerProps<T> & {
   columns?: ConditionalValue<number>;
   gap?: ConditionalValue<SpacingRailToken>;
   rowGap?: ConditionalValue<SpacingRailToken>;
   columnGap?: ConditionalValue<SpacingRailToken>;
   alignItems?: SystemProperties["alignItems"];
   justifyContent?: SystemProperties["justifyContent"];
-}
-
-export const Grid: ParentComponent<GridProps> = (props) => {
-  const { getStyleProps, rest } = extractStyleProps(
-    props,
-    "columns",
-    "gap",
-    "rowGap",
-    "columnGap",
-    "alignItems",
-    "justifyContent",
-  );
-  return (
-    <Dynamic
-      component={props.as ?? "div"}
-      {...rest}
-      class={cx(
-        grid({
-          ...getStyleProps(),
-          columns: props.columns ?? 1,
-          gap: props.gap ?? "6",
-          rowGap: props.rowGap,
-          columnGap: props.columnGap,
-          alignItems: props.alignItems,
-          justifyContent: props.justifyContent,
-          w: props.w ?? "full",
-        }),
-        toClass(props.class),
-      )}
-    >
-      {props.children}
-    </Dynamic>
-  );
 };
 
-export interface DividerProps extends Omit<ComponentProps<"hr">, "style"> {
+export function Grid<T extends SemanticContainerTag = "div">(props: GridProps<T>): JSX.Element {
+  return <PandaGrid columns={1} gap="6" w="full" {...(props as PandaGridProps)} />;
+}
+
+export interface DividerProps extends Omit<ComponentProps<"hr">, "style" | "color"> {
   orientation?: "horizontal" | "vertical";
   thickness?: SystemProperties["borderWidth"];
   color?: BorderColorToken;
@@ -295,30 +147,20 @@ export interface DividerProps extends Omit<ComponentProps<"hr">, "style"> {
   h?: SystemProperties["height"];
 }
 
-export const Divider: ParentComponent<DividerProps> = (props) => {
-  const rest = omitProps(
-    props,
-    "orientation",
-    "thickness",
-    "color",
-    "borderColor",
-    "h",
-    "class",
-    "children",
-    "style",
+export function Divider(props: DividerProps): JSX.Element {
+  const rest = omit(props, "borderColor", "color");
+  const mergedProps = merge(
+    {
+      as: "hr" as const,
+      orientation: "horizontal" as const,
+      thickness: "1px",
+    },
+    rest,
+    {
+      get color() {
+        return props.borderColor ?? props.color ?? "border.subtle";
+      },
+    },
   );
-  return (
-    <hr
-      {...rest}
-      class={cx(
-        divider({
-          orientation: props.orientation ?? "horizontal",
-          thickness: props.thickness ?? "1px",
-          color: props.borderColor ?? props.color ?? "border.subtle",
-          h: props.h,
-        }),
-        toClass(props.class),
-      )}
-    />
-  );
-};
+  return <PandaDivider {...(mergedProps as PandaDividerProps)} />;
+}

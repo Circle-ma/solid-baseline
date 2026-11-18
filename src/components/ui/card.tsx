@@ -1,8 +1,6 @@
 import type { ComponentProps } from "@solidjs/web";
-import type { ParentComponent } from "solid-js";
-import { cx } from "styled-system/css";
+import { omit, type ParentComponent } from "solid-js";
 import { card } from "styled-system/recipes";
-import { omitProps, toClass } from "./tokens";
 
 const cardStyles = card();
 
@@ -12,9 +10,9 @@ const cardStyles = card();
  * Inline `style` is strictly forbidden at compile time.
  */
 export const CardRoot: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
-  const rest = omitProps(props, "class", "children", "style");
+  const rest = omit(props, "class", "children");
   return (
-    <div {...rest} class={cx(cardStyles.root, toClass(props.class))}>
+    <div {...rest} class={[cardStyles.root, props.class]}>
       {props.children}
     </div>
   );
@@ -25,9 +23,9 @@ export const CardRoot: ParentComponent<Omit<ComponentProps<"div">, "style">> = (
  * Tight vertical stack pairing title and description.
  */
 export const CardHeader: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
-  const rest = omitProps(props, "class", "children", "style");
+  const rest = omit(props, "class", "children");
   return (
-    <div {...rest} class={cx(cardStyles.header, toClass(props.class))}>
+    <div {...rest} class={[cardStyles.header, props.class]}>
       {props.children}
     </div>
   );
@@ -38,9 +36,9 @@ export const CardHeader: ParentComponent<Omit<ComponentProps<"div">, "style">> =
  * High-contrast semantic heading.
  */
 export const CardTitle: ParentComponent<Omit<ComponentProps<"h3">, "style">> = (props) => {
-  const rest = omitProps(props, "class", "children", "style");
+  const rest = omit(props, "class", "children");
   return (
-    <h3 {...rest} class={cx(cardStyles.title, toClass(props.class))}>
+    <h3 {...rest} class={[cardStyles.title, props.class]}>
       {props.children}
     </h3>
   );
@@ -51,9 +49,9 @@ export const CardTitle: ParentComponent<Omit<ComponentProps<"h3">, "style">> = (
  * Muted explanatory text.
  */
 export const CardDescription: ParentComponent<Omit<ComponentProps<"p">, "style">> = (props) => {
-  const rest = omitProps(props, "class", "children", "style");
+  const rest = omit(props, "class", "children");
   return (
-    <p {...rest} class={cx(cardStyles.description, toClass(props.class))}>
+    <p {...rest} class={[cardStyles.description, props.class]}>
       {props.children}
     </p>
   );
@@ -64,9 +62,9 @@ export const CardDescription: ParentComponent<Omit<ComponentProps<"p">, "style">
  * Systematic container for card contents with uniform vertical spacing.
  */
 export const CardBody: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
-  const rest = omitProps(props, "class", "children", "style");
+  const rest = omit(props, "class", "children");
   return (
-    <div {...rest} class={cx(cardStyles.body, toClass(props.class))}>
+    <div {...rest} class={[cardStyles.body, props.class]}>
       {props.children}
     </div>
   );
@@ -77,9 +75,9 @@ export const CardBody: ParentComponent<Omit<ComponentProps<"div">, "style">> = (
  * Action container with right-aligned button stack.
  */
 export const CardFooter: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
-  const rest = omitProps(props, "class", "children", "style");
+  const rest = omit(props, "class", "children");
   return (
-    <div {...rest} class={cx(cardStyles.footer, toClass(props.class))}>
+    <div {...rest} class={[cardStyles.footer, props.class]}>
       {props.children}
     </div>
   );

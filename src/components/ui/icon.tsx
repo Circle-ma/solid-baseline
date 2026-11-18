@@ -1,8 +1,6 @@
 import type { ComponentProps } from "@solidjs/web";
-import type { ParentComponent } from "solid-js";
-import { cx } from "styled-system/css";
+import { omit, type ParentComponent } from "solid-js";
 import { type IconVariant, icon } from "styled-system/recipes";
-import { omitProps, toClass } from "./tokens";
 
 export interface IconProps extends Omit<ComponentProps<"svg">, "style" | "width" | "height"> {
   size?: IconVariant["size"];
@@ -14,12 +12,11 @@ export interface IconProps extends Omit<ComponentProps<"svg">, "style" | "width"
  * Defaults to a 24x24 stroke-based viewBox and `aria-hidden="true"` unless explicitly labelled.
  */
 export const Icon: ParentComponent<IconProps> = (props) => {
-  const rest = omitProps(
+  const rest = omit(
     props,
     "size",
     "class",
     "children",
-    "style",
     "viewBox",
     "fill",
     "stroke",
@@ -38,7 +35,7 @@ export const Icon: ParentComponent<IconProps> = (props) => {
       stroke-linejoin={props["stroke-linejoin"] ?? "round"}
       aria-hidden={props["aria-label"] ? undefined : (props["aria-hidden"] ?? "true")}
       {...rest}
-      class={cx(icon({ size: props.size }), toClass(props.class))}
+      class={[icon({ size: props.size }), props.class]}
     >
       {props.children}
     </svg>

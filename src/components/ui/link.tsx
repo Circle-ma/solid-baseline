@@ -1,9 +1,7 @@
 import { useHref, useInRouter, useLinkState } from "@solidjs/router";
 import type { ComponentProps } from "@solidjs/web";
-import { createMemo, type ParentComponent } from "solid-js";
-import { cx } from "styled-system/css";
+import { omit, type ParentComponent } from "solid-js";
 import { navLink } from "styled-system/recipes";
-import { omitProps, toClass } from "./tokens";
 
 export interface NavLinkProps extends Omit<ComponentProps<"a">, "style" | "href"> {
   href: string;
@@ -29,7 +27,7 @@ export interface NavLinkProps extends Omit<ComponentProps<"a">, "style" | "href"
  * `activeClass`/`inactiveClass` composition, and automatic `aria-current="page"` state.
  */
 export const NavLink: ParentComponent<NavLinkProps> = (props) => {
-  const rest = omitProps(
+  const rest = omit(
     props,
     "href",
     "end",
@@ -40,7 +38,6 @@ export const NavLink: ParentComponent<NavLinkProps> = (props) => {
     "noScroll",
     "class",
     "children",
-    "style",
   );
 
   const inRouter = useInRouter();
@@ -53,15 +50,11 @@ export const NavLink: ParentComponent<NavLinkProps> = (props) => {
       })
     : undefined;
 
-  const isActive = createMemo(
-    () => (typeof props.active === "boolean" ? props.active : (linkState?.active() ?? false)),
-    { name: "nav-link-active" },
-  );
+  const isActive = () =>
+    typeof props.active === "boolean" ? props.active : (linkState?.active() ?? false);
 
-  const isCurrent = createMemo(
-    () => (typeof props.active === "boolean" ? props.active : (linkState?.current() ?? false)),
-    { name: "nav-link-current" },
-  );
+  const isCurrent = () =>
+    typeof props.active === "boolean" ? props.active : (linkState?.current() ?? false);
 
   return (
     <a
@@ -71,11 +64,11 @@ export const NavLink: ParentComponent<NavLinkProps> = (props) => {
       {...rest}
       aria-current={isCurrent() ? "page" : undefined}
       data-active={isActive() ? "" : undefined}
-      class={cx(
+      class={[
         isActive() ? navLink({ active: true }) : navLink({ active: false }),
         isActive() ? props.activeClass : props.inactiveClass,
-        toClass(props.class),
-      )}
+        props.class,
+      ]}
     >
       {props.children}
     </a>

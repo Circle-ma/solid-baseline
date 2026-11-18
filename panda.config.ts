@@ -1,14 +1,113 @@
-import { defineConfig, defineRecipe, defineSlotRecipe } from "@pandacss/dev";
+import { defineConfig, definePlugin, defineRecipe, defineSlotRecipe } from "@pandacss/dev";
+
+/**
+ * Aligns Panda CSS 2.5 generated Solid JSX factory with Solid 2.0 GA:
+ * - Routes `Dynamic`/`createComponent` imports to `@solidjs/web`
+ * - Uses Solid 2.0 `merge` and Panda's getter-preserving `splitProps` from `../helpers`
+ * - Eliminates untracked `createMemo` reads inside `StyledComponent` (`STRICT_READ_UNTRACKED`)
+ * - Preserves Solid 2.0 native array/object `class` values on JSX primitives
+ * - Imports `ComponentProps` and `JSX` from `@solidjs/web` in `types/jsx.d.ts`
+ */
+const solid2JsxCompatPlugin = definePlugin({
+  name: "solid-2-jsx-compat",
+  hooks: {
+    "codegen:prepare": ({ artifacts }) => {
+      for (const artifact of artifacts) {
+        for (const file of artifact.files) {
+          if (file.path.endsWith("types/jsx.d.ts")) {
+            file.code = file.code.replace(
+              "import type { Accessor, Component, ComponentProps, JSX } from 'solid-js';",
+              "import type { Accessor, Component } from 'solid-js';\nimport type { ComponentProps, JSX } from '@solidjs/web';",
+            );
+          } else if (file.path.endsWith("jsx/factory.js")) {
+            file.code = file.code
+              .replace(
+                "import { createMemo, mergeProps, splitProps } from 'solid-js';",
+                "import { merge as mergeProps } from 'solid-js';",
+              )
+              .replace(
+                "import { Dynamic, createComponent } from 'solid-js/web';",
+                "import { Dynamic, createComponent } from '@solidjs/web';",
+              )
+              .replace(
+                "import { normalizeHTMLProps } from '../helpers';",
+                "import { normalizeHTMLProps, splitProps } from '../helpers';",
+              )
+              .replace(
+                "const forwardedKeys = createMemo(() => Object.keys(aProps).filter((prop) => __shouldForwardProps__(prop)))",
+                "const forwardedKeys = Object.keys(aProps).filter((prop) => __shouldForwardProps__(prop))",
+              )
+              .replace(
+                "const [forwardedProps, variantProps, bProps] = splitProps(aProps, forwardedKeys(), variantKeys)",
+                "const [forwardedProps, variantProps, bProps] = splitProps(aProps, forwardedKeys, variantKeys)",
+              )
+              .replace(
+                "const cssPropKeys = createMemo(() => Object.keys(bProps).filter((prop) => isCssProperty(prop)))",
+                "const cssPropKeys = Object.keys(bProps).filter((prop) => isCssProperty(prop))",
+              )
+              .replace(
+                "const [styleProps, elementProps] = splitProps(bProps, cssPropKeys())",
+                "const [styleProps, elementProps] = splitProps(bProps, cssPropKeys)",
+              )
+              .replace(
+                "if (localProps.unstyled) return cx(hasStyles && serializeSplitStyles(propStyles, cssStyles), localProps.class, localProps.className)",
+                "if (localProps.unstyled) return [hasStyles ? serializeSplitStyles(propStyles, cssStyles) : undefined, localProps.class, localProps.className]",
+              )
+              .replace(
+                `        return cx(
+          __cvaFn__(variantProps, false),
+          compoundVariantClasses,
+          hasStyles && serializeSplitStyles(propStyles, cssStyles),
+          localProps.class,
+          localProps.className,
+        )`,
+                `        return [
+          cx(
+            __cvaFn__(variantProps, false),
+            compoundVariantClasses,
+            hasStyles && serializeSplitStyles(propStyles, cssStyles),
+          ),
+          localProps.class,
+          localProps.className,
+        ]`,
+              )
+              .replace(
+                `      return cx(
+        hasStyles ? serializeSplitStyles(propStyles, cssStyles, getRaw(variantProps)) : __cvaFn__(variantProps),
+        localProps.class,
+        localProps.className,
+      )`,
+                `      return [
+        hasStyles ? serializeSplitStyles(propStyles, cssStyles, getRaw(variantProps)) : __cvaFn__(variantProps),
+        localProps.class,
+        localProps.className,
+      ]`,
+              );
+          } else if (file.path.includes("jsx/") && file.path.endsWith(".js")) {
+            file.code = file.code
+              .replace(
+                "import { createMemo, mergeProps, splitProps } from 'solid-js';",
+                "import { merge as mergeProps } from 'solid-js';\nimport { splitProps } from '../helpers';",
+              )
+              .replaceAll("'solid-js/web'", "'@solidjs/web'")
+              .replaceAll("/* @__PURE__ */ function ", "function ");
+          }
+        }
+      }
+      return artifacts;
+    },
+  },
+});
 
 const buttonRecipe = defineRecipe({
   className: "button",
   description: "Standard button recipe",
-  jsx: ["Button", "Dialog.Trigger", "Dialog.CloseTrigger", "DialogTrigger", "DialogCloseTrigger"],
+  jsx: ["Button", "Dialog.Trigger", "DialogTrigger"],
   base: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: "md",
+    borderRadius: "l2",
     fontWeight: "medium",
     cursor: "pointer",
     transitionProperty: "colors, box-shadow, transform",
@@ -338,7 +437,6 @@ const textRecipe = defineRecipe({
   },
   defaultVariants: {
     variant: "body",
-    size: "md",
     tone: "default",
   },
 });
@@ -361,10 +459,7 @@ const inputRecipe = defineRecipe({
     _placeholder: { color: "fg.subtle" },
     _focusVisible: {
       borderColor: "accent.default",
-      outlineWidth: "2px",
-      outlineStyle: "solid",
-      outlineColor: "accent.default",
-      outlineOffset: "1px",
+      boxShadow: "focusRing",
     },
     _disabled: {
       opacity: 0.5,
@@ -382,7 +477,7 @@ const inputRecipe = defineRecipe({
         borderColor: "danger.border",
         _focusVisible: {
           borderColor: "danger.default",
-          outlineColor: "danger.default",
+          boxShadow: "focusRingDanger",
         },
       },
     },
@@ -402,7 +497,7 @@ const navLinkRecipe = defineRecipe({
     textDecoration: "none",
     px: "3",
     py: "1.5",
-    borderRadius: "sm",
+    borderRadius: "l1",
     textStyle: "xs",
     cursor: "pointer",
     transitionProperty: "colors, background-color",
@@ -614,7 +709,7 @@ const dialogSlotRecipe = defineSlotRecipe({
       justifyContent: "center",
       w: "7",
       h: "7",
-      borderRadius: "md",
+      borderRadius: "l1",
       color: "fg.muted",
       cursor: "pointer",
       outline: "none",
@@ -638,6 +733,7 @@ export default defineConfig({
   strictTokens: true,
   strictPropertyValues: true,
   presets: ["@pandacss/preset-base", "@pandacss/preset-panda"],
+  plugins: [solid2JsxCompatPlugin],
   theme: {
     extend: {
       recipes: {
@@ -716,13 +812,25 @@ export default defineConfig({
           card: {
             value: {
               base: "{shadows.sm}",
-              _dark: "inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 4px 12px rgba(0, 0, 0, 0.4)",
+              _dark: "inset 0 1px 0 0 {colors.white/6}, 0 4px 12px {colors.black/40}",
             },
           },
           modal: {
             value: {
               base: "{shadows.xl}",
-              _dark: "inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 12px 28px rgba(0, 0, 0, 0.5)",
+              _dark: "inset 0 1px 0 0 {colors.white/6}, 0 12px 28px {colors.black/50}",
+            },
+          },
+          focusRing: {
+            value: {
+              base: "0 0 0 3px {colors.slate.900/15}",
+              _dark: "0 0 0 3px {colors.slate.100/20}",
+            },
+          },
+          focusRingDanger: {
+            value: {
+              base: "0 0 0 3px {colors.red.600/20}",
+              _dark: "0 0 0 3px {colors.red.500/25}",
             },
           },
         },
@@ -999,6 +1107,14 @@ export default defineConfig({
     "h1, h2, h3, h4, h5, h6": {
       fontFamily: "heading",
       fontOpticalSizing: "auto",
+    },
+    "@media (prefers-reduced-motion: reduce)": {
+      "*, *::before, *::after": {
+        animationDuration: "0.01ms !important",
+        animationIterationCount: "1 !important",
+        transitionDuration: "0.01ms !important",
+        scrollBehavior: "auto !important",
+      },
     },
   },
   include: ["./src/**/*.{ts,tsx}"],
