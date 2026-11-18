@@ -19,10 +19,10 @@ The file `AGENTS.md` at the workspace root is the **SOLE ARCHITECTURAL CONSTITUT
 
 ## 3. Immediate Invariant Reminders
 - Never use inline `style={{ ... }}`.
-- Never write hardcoded colors (`#hex`, `rgb(...)`) inside JSX style attributes or `css()`/`cva()`/`sva()` style objects; use tokens from `~/components/ui/tokens`.
+- Never write hardcoded colors (`#hex`, `rgb(...)`, `oklch(...)`) inside JSX style attributes or `css()`/`cva()`/`sva()`/pattern calls; use tokens from `~/components/ui/tokens`.
 - Never destructure component props (`function Comp({ prop })` is strictly forbidden; always use `props.prop` and Solid 2.0 native `omit(props, ...)`).
-- Spacing between siblings belongs exclusively to layout containers (`<Container>`, `<VStack>`, `<HStack>`, `<Grid>`) via `gap`. Push margin props are banned in JSX and style objects (only `ml="auto"`, `mr="auto"`, `mx="auto"` are permitted for flex alignment).
-- One-off page layout styles in `src/routes/` may use `css()` from `styled-system/css` (identical blocks repeated >= 3 times must be extracted to `cva()` or `panda.config.ts` recipes).
-- Raw visual/interactive HTML elements (`button`, `input`, `select`, `textarea`, `h1`-`h6`, `p`, `a`, `hr`, `svg`) outside `src/components/ui/` are banned; use Systematic UI primitives (structural HTML tags are permitted).
+- Never import `styled-system/jsx` anywhere in `src/` (it targets Solid 1.x). Use pure Solid 2.0 layout primitives from `~/components/ui` (`<Box>`, `<Container>`, `<VStack>`, `<HStack>`, `<Grid>`, `<Divider>`); one-off `css()` from `styled-system/css` is allowed in routes.
+- Raw interactive/icon controls that bypass canonical UI primitives (`button`, `input`, `textarea`, `svg`) outside `src/components/ui/` are banned; use `<Button>`, `<Input>`, `<Textarea>`, `<Icon>` (semantic/structural HTML tags, `<select>`, and `<a>` are permitted).
+- Never call single-argument `createEffect(fn)` in `src/` — always use Solid 2.0 two-argument `createEffect(compute, apply)` or `onSettled()`.
 - Never use type escape hatches (`as any`, `@ts-ignore`, `@ts-expect-error`).
-- Tables, reducers, and RPC domain contracts must derive from `src/schema/`. Backend (`server/`, `spacetimedb/`) must remain strictly isolated from UI and browser DOM APIs.
+- Tables, reducers, and RPC domain contracts must derive from `src/schema/`. Direct `fetch()` or `DbConnection` calls are banned in `src/routes/` and `src/components/`. Backend (`server/`, `spacetimedb/`) must remain strictly isolated from UI and browser DOM APIs.
