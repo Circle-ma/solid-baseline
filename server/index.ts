@@ -1,28 +1,16 @@
 import { createConnectRouter } from "@connectrpc/connect";
 import { createFetchHandler } from "@connectrpc/connect/protocol";
-import { HealthCheckStatus, PaymentService, SystemService } from "../src/schema/connect";
+import { HealthCheckStatus, SystemService } from "../src/schema/connect";
 
 export const router = createConnectRouter();
 
-// 1. Register SystemService
+// Register SystemService
 router.service(SystemService, {
-  async checkHealth(req) {
+  async checkHealth(_req) {
     return {
       status: HealthCheckStatus.SERVING,
       version: "1.0.0",
       uptimeSeconds: process.uptime(),
-    };
-  },
-});
-
-// 2. Register PaymentService
-router.service(PaymentService, {
-  async createCheckoutSession(req) {
-    const sessionId = `cs_live_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    return {
-      sessionId,
-      checkoutUrl: `https://checkout.stripe.com/pay/${sessionId}`,
-      status: "OPEN",
     };
   },
 });

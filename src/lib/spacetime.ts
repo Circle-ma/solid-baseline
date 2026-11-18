@@ -1,4 +1,4 @@
-import { createProjection, reconcile } from "solid-js";
+import { reconcile } from "solid-js";
 import {
   DbConnectionBuilder,
   DbConnectionImpl,
@@ -21,7 +21,7 @@ import type {
 } from "~/schema";
 
 /**
- * Canonical SpacetimeDB 2.14.x RemoteModule descriptor derived from SSOT event_log & tx_event.
+ * Canonical SpacetimeDB 2.15.x RemoteModule descriptor derived from SSOT event_log & tx_event.
  */
 const eventLogTables = schema({
   event_log: table(
@@ -210,7 +210,7 @@ function isEventLogRecord(value: unknown): value is EventLogRecord {
 
 /**
  * Live WebSocket SpacetimeDB Adapter
- * Connects to a running SpacetimeDB instance via SpacetimeDB SDK 2.14.x,
+ * Connects to a running SpacetimeDB instance via SpacetimeDB SDK 2.15.x,
  * subscribes to `event_log`, and binds real `onInsert` / `onUpdate` / `onDelete` table streams.
  */
 export class LiveSpacetimeAdapter implements SpacetimeClientAdapter {
@@ -457,20 +457,5 @@ export function reconcileTableStore<T extends { id: string }>(
 ) {
   setStore((draft) => {
     reconcile(nextRows, key as string)(draft);
-  });
-}
-
-/**
- * Solid 2.0 Keyed Reactive Projection
- * Derives a projection from SpacetimeDB table rows with keyed identity preservation.
- */
-export function createTableProjection<T extends { id: string }, R>(
-  source: () => T[],
-  mapFn: (item: T) => R,
-  options?: { key?: keyof T; name?: string },
-) {
-  return createProjection(() => source().map(mapFn), [], {
-    key: (options?.key as string) ?? "id",
-    name: options?.name ?? "spacetimedb-projection",
   });
 }
