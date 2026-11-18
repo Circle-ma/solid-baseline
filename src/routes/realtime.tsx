@@ -1,16 +1,81 @@
-import { createMemo, For, Show } from "solid-js";
-import { Badge, Button, Card, Code, HStack, Text, VStack } from "~/components/ui";
-import { useTelemetry } from "~/lib";
+import { createMemo, For, isPending, Show } from "solid-js";
+import { AsyncBoundary, Badge, Button, Card, Code, HStack, Text, VStack } from "~/components/ui";
+import { useRpc, useSpacetime } from "~/lib";
 import { HealthCheckStatus } from "~/schema";
 
-export default function Realtime() {
-  const telemetry = useTelemetry();
-  const rpcStatus = createMemo(() => telemetry.rpcResponse()?.status ?? null, {
-    name: "rpc-status",
+function HealthCheckStatusBadge() {
+  const rpc = useRpc();
+  const status = createMemo(() => rpc.healthQuery()?.response.status ?? null, {
+    name: "rpc-health-status",
   });
 
   return (
-    <VStack gap="6" alignItems="stretch">
+    <Badge
+      variant="subtle"
+      intent={
+        status() === HealthCheckStatus.SERVING
+          ? "success"
+          : status() !== null
+            ? "danger"
+            : "default"
+      }
+    >
+      {status() !== null
+        ? `Status: ${status() === HealthCheckStatus.SERVING ? "SERVING" : "NOT_SERVING"}`
+        : "Uncalled"}
+    </Badge>
+  );
+}
+
+function HealthCheckResultPanel() {
+  const rpc = useRpc();
+
+  return (
+    <Show when={rpc.healthQuery()}>
+      {(result) => (
+        <HStack
+          justifyContent="space-between"
+          alignItems="center"
+          p="3"
+          bg="bg.canvas"
+          borderRadius="l2"
+          borderWidth="1px"
+          borderStyle="solid"
+          borderColor="border.subtle"
+        >
+          <HStack gap="2" alignItems="center">
+            <Badge
+              variant="solid"
+              intent={result().response.status === HealthCheckStatus.SERVING ? "success" : "danger"}
+              size="sm"
+            >
+              {result().response.status === HealthCheckStatus.SERVING ? "SERVING" : "NOT_SERVING"}
+            </Badge>
+            <Text size="xs" tone="muted">
+              Version: {result().response.version}
+            </Text>
+            <Text size="xs" tone="accent" tabular>
+              ({result().latencyMs}ms)
+            </Text>
+          </HStack>
+          <Text size="xs" tone="muted" tabular>
+            Uptime: {result().response.uptimeSeconds}s
+          </Text>
+        </HStack>
+      )}
+    </Show>
+  );
+}
+
+export default function Realtime() {
+  const spacetime = useSpacetime();
+  const rpc = useRpc();
+  const isHealthPending = createMemo(() => isPending(() => rpc.healthQuery()), {
+    name: "rpc-health-pending",
+  });
+
+  return (
+    <VStack as="section" gap="6" alignItems="stretch">
       {/* SpacetimeDB Realtime Engine */}
       <Card.Root>
         <Card.Header>
@@ -22,11 +87,11 @@ export default function Realtime() {
               </Card.Description>
             </VStack>
             <HStack gap="2" alignItems="center">
-              <Badge variant="subtle" intent={telemetry.isConnected() ? "success" : "warning"}>
-                {telemetry.connectionMode() === "live" ? "Live WebSocket" : "Reactive Local Cache"}
+              <Badge variant="subtle" intent={spacetime.isConnected() ? "success" : "warning"}>
+                {spacetime.connectionMode() === "live" ? "Live WebSocket" : "Reactive Local Cache"}
               </Badge>
               <Badge variant="outline" intent="default">
-                {telemetry.clientIdentity()}
+                {spacetime.clientIdentity()}
               </Badge>
             </HStack>
           </HStack>
@@ -45,14 +110,14 @@ export default function Realtime() {
                 <Text size="xs" tone="muted">
                   RECORDS:{" "}
                   <Text as="span" weight="bold" tone="default" tabular>
-                    {telemetry.records.length}
+                    {spacetime.records.length}
                   </Text>
                 </Text>
-                <Show when={telemetry.latencyMs() !== null}>
+                <Show when={spacetime.latencyMs() !== null}>
                   <Text size="xs" tone="accent">
                     LATENCY:{" "}
                     <Text as="span" weight="bold" tabular>
-                      {telemetry.latencyMs()}ms
+                      {spacetime.latencyMs()}ms
                     </Text>
                   </Text>
                 </Show>
@@ -61,22 +126,22 @@ export default function Realtime() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => telemetry.toggleSimulationMode()}
+                  onClick={() => spacetime.toggleSimulationMode()}
                 >
-                  {telemetry.isConnected() ? "Disconnect" : "Simulate Live"}
+                  {spacetime.isConnected() ? "Disconnect" : "Simulate Live"}
                 </Button>
-                <Button variant="danger" size="sm" onClick={() => telemetry.clearRecords()}>
+                <Button variant="danger" size="sm" onClick={() => spacetime.clearRecords()}>
                   Clear Store
                 </Button>
                 <Button
                   variant="solid"
                   size="sm"
-                  onClick={() =>
-                    telemetry.callReducer({
+                  onClick={() => {
+                    void spacetime.callReducer({
                       action: "TX_EVENT",
                       payload: `Mutation @ ${new Date().toLocaleTimeString()}`,
-                    })
-                  }
+                    });
+                  }}
                 >
                   ⚡ Dispatch Reducer
                 </Button>
@@ -84,6 +149,7 @@ export default function Realtime() {
             </HStack>
 
             <VStack
+              as="ul"
               gap="2"
               alignItems="stretch"
               maxH="48"
@@ -95,7 +161,7 @@ export default function Realtime() {
               p="2"
             >
               <For
-                each={telemetry.records}
+                each={spacetime.records}
                 fallback={
                   <Text size="xs" tone="muted">
                     No event records in store. Dispatch a reducer to populate.
@@ -104,6 +170,7 @@ export default function Realtime() {
               >
                 {(record) => (
                   <HStack
+                    as="li"
                     justifyContent="space-between"
                     alignItems="center"
                     p="2"
@@ -132,100 +199,60 @@ export default function Realtime() {
         </Card.Body>
       </Card.Root>
 
-      {/* ConnectRPC Service Integration */}
+      {/* ConnectRPC Declarative Async Query Pipeline */}
       <Card.Root>
-        <Card.Header>
-          <HStack justifyContent="space-between" alignItems="center">
-            <VStack gap="1" alignItems="flex-start">
-              <Card.Title>ConnectRPC Client Pipeline</Card.Title>
-              <Card.Description>
-                Type-safe Protobuf and JSON RPC over standard HTTP/1.1 and HTTP/2 fetch.
-              </Card.Description>
-            </VStack>
-            <Badge
-              variant="subtle"
-              intent={
-                rpcStatus() === HealthCheckStatus.SERVING
-                  ? "success"
-                  : rpcStatus() !== null
-                    ? "danger"
-                    : "default"
-              }
-            >
-              {rpcStatus() !== null
-                ? `Status: ${rpcStatus() === HealthCheckStatus.SERVING ? "SERVING" : "NOT_SERVING"}`
-                : "Uncalled"}
-            </Badge>
-          </HStack>
-        </Card.Header>
-
-        <Card.Body>
-          <VStack gap="4" alignItems="stretch">
-            <HStack
-              justifyContent="space-between"
-              alignItems="center"
-              p="3"
-              bg="bg.subtle"
-              borderRadius="l2"
-            >
-              <HStack gap="4" alignItems="center">
-                <Text size="xs" tone="muted">
-                  SERVICE:{" "}
-                  <Text as="span" weight="bold" tone="default">
-                    system.v1.SystemService
-                  </Text>
-                </Text>
-                <Show when={telemetry.rpcLatencyMs() !== null}>
-                  <Text size="xs" tone="accent">
-                    LATENCY:{" "}
-                    <Text as="span" weight="bold" tabular>
-                      {telemetry.rpcLatencyMs()}ms
-                    </Text>
-                  </Text>
-                </Show>
-              </HStack>
-              <Button
-                variant="solid"
-                size="sm"
-                disabled={telemetry.isRpcPending()}
-                onClick={() => telemetry.checkSystemHealth()}
-              >
-                {telemetry.isRpcPending() ? "Calling RPC..." : "📡 Invoke HealthCheck RPC"}
-              </Button>
+        <AsyncBoundary>
+          <Card.Header>
+            <HStack justifyContent="space-between" alignItems="center">
+              <VStack gap="1" alignItems="flex-start">
+                <Card.Title>ConnectRPC Client Pipeline</Card.Title>
+                <Card.Description>
+                  Type-safe Protobuf and JSON RPC via Solid 2.0 declarative async memos and
+                  AsyncBoundary.
+                </Card.Description>
+              </VStack>
+              <HealthCheckStatusBadge />
             </HStack>
+          </Card.Header>
 
-            <Show when={telemetry.rpcResponse()}>
-              {(res) => (
-                <HStack
-                  justifyContent="space-between"
-                  alignItems="center"
-                  p="3"
-                  bg="bg.canvas"
-                  borderRadius="l2"
-                  borderWidth="1px"
-                  borderStyle="solid"
-                  borderColor="border.subtle"
-                >
-                  <HStack gap="2" alignItems="center">
-                    <Badge
-                      variant="solid"
-                      intent={res().status === HealthCheckStatus.SERVING ? "success" : "danger"}
-                      size="sm"
-                    >
-                      {res().status === HealthCheckStatus.SERVING ? "SERVING" : "NOT_SERVING"}
-                    </Badge>
-                    <Text size="xs" tone="muted">
-                      Version: {res().version}
+          <Card.Body>
+            <VStack gap="4" alignItems="stretch">
+              <HStack
+                justifyContent="space-between"
+                alignItems="center"
+                p="3"
+                bg="bg.subtle"
+                borderRadius="l2"
+              >
+                <HStack gap="4" alignItems="center">
+                  <Text size="xs" tone="muted">
+                    SERVICE:{" "}
+                    <Text as="span" weight="bold" tone="default">
+                      system.v1.SystemService
                     </Text>
-                  </HStack>
-                  <Text size="xs" tone="muted" tabular>
-                    Uptime: {res().uptimeSeconds}s
                   </Text>
+                  <Show when={isHealthPending()}>
+                    <Badge variant="subtle" intent="info" size="sm">
+                      In Flight
+                    </Badge>
+                  </Show>
                 </HStack>
-              )}
-            </Show>
-          </VStack>
-        </Card.Body>
+                <Button
+                  variant="solid"
+                  size="sm"
+                  disabled={isHealthPending()}
+                  onClick={() => {
+                    void rpc.refreshHealth().catch(() => undefined);
+                  }}
+                >
+                  {isHealthPending() ? "Calling RPC..." : "📡 Invoke HealthCheck RPC"}
+                </Button>
+              </HStack>
+
+              <HealthCheckResultPanel />
+            </VStack>
+          </Card.Body>
+        </AsyncBoundary>
       </Card.Root>
     </VStack>
   );

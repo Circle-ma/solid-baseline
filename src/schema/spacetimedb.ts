@@ -1,9 +1,11 @@
+import type { Accessor } from "solid-js";
+
 /**
  * SpacetimeDB Canonical Schema (Single Source of Truth - SSOT)
  *
- * Defines the relational schema, column definitions, and reducer parameters.
+ * Defines the relational schema, column definitions, reducer parameters,
+ * adapter interface, and reactive provider contract.
  * All application layers MUST derive their types from these schemas.
- * Declaring arbitrary, loose TypeScript interfaces for database entities is strictly prohibited.
  */
 
 // Column type definitions mapping schema identifiers to runtime primitive types
@@ -64,6 +66,7 @@ export interface SpacetimeConnectionOptions {
 }
 
 export type SpacetimeEventCallback<T> = (row: T) => void;
+export type SpacetimeSnapshotCallback<T> = (rows: T[]) => void;
 export type SpacetimeDeleteCallback = (rowId: string) => void;
 export type SpacetimeTransactionStatus = "committed" | "failed";
 
@@ -79,8 +82,33 @@ export interface SpacetimeClientAdapter {
   connect(): Promise<void>;
   disconnect(): void;
   onConnectionStateChange(cb: (connected: boolean) => void): () => void;
+  onSnapshot(tableName: string, callback: SpacetimeSnapshotCallback<EventLogRecord>): () => void;
   onInsert(tableName: string, callback: SpacetimeEventCallback<EventLogRecord>): () => void;
   onUpdate(tableName: string, callback: SpacetimeEventCallback<EventLogRecord>): () => void;
   onDelete(tableName: string, callback: SpacetimeDeleteCallback): () => void;
   callReducer(params: TxReducerParams): Promise<SpacetimeTransactionResult>;
+}
+
+/**
+ * Single-Responsibility SpacetimeDB Provider Props
+ */
+export interface SpacetimeProviderProps {
+  /** Optional adapter override for deterministic tests or SSR isolation. */
+  adapter?: SpacetimeClientAdapter;
+  initialMode?: "live" | "local-cache";
+}
+
+/**
+ * Single-Responsibility SpacetimeDB Context Contract
+ * Manages realtime connection state, identity, fine-grained table store, and reducers only.
+ */
+export interface SpacetimeContextValue {
+  isConnected: Accessor<boolean>;
+  connectionMode: Accessor<"live" | "local-cache">;
+  clientIdentity: Accessor<string>;
+  latencyMs: Accessor<number | null>;
+  records: EventLogRecord[];
+  callReducer: (params: TxReducerParams) => Promise<SpacetimeTransactionResult | null>;
+  toggleSimulationMode: () => void;
+  clearRecords: () => void;
 }

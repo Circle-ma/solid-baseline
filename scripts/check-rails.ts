@@ -49,6 +49,14 @@ const BANNED_RAW_DOM = new Set([
   "svg",
   "table",
   "a",
+  "ul",
+  "li",
+  "nav",
+  "main",
+  "section",
+  "header",
+  "footer",
+  "form",
 ]);
 
 const BANNED_MARGIN_PROPS = new Set([
@@ -109,7 +117,7 @@ const program = ts.createProgram(allFilePaths, {
   target: ts.ScriptTarget.ESNext,
   module: ts.ModuleKind.ESNext,
   jsx: ts.JsxEmit.Preserve,
-  jsxImportSource: "solid-js",
+  jsxImportSource: "@solidjs/web",
   moduleResolution: ts.ModuleResolutionKind.Bundler,
   baseUrl: join(import.meta.dirname, ".."),
   paths: {
@@ -349,7 +357,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
           addViolation(
             node,
             "RAW_DOM_ELEMENT_BANNED",
-            `Raw HTML element "<${tagName}>" is forbidden in features. Use systematic UI primitives from "~/components/ui" (e.g. <Heading>, <Text>, <Button>, <Box>, <Container>, <VStack>, <HStack>, <NavLink>).`,
+            `Raw HTML element "<${tagName}>" is forbidden in features. Use systematic semantic UI primitives from "~/components/ui" (e.g. <Box as="${tagName}">, <VStack as="section">, <HStack as="nav">, <Heading>, <Text>, <Button>, <NavLink>).`,
           );
         }
       }
@@ -376,20 +384,21 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // 9. In src/routes/ and src/lib/, forbid ad-hoc type/interface definitions
+    // 9. In src/routes/ and src/lib/, enforce SSOT schema governance for entities & RPC contracts
+    // Route-local non-exported *Props / *View / *ViewModel types are permitted in src/routes/.
     if (isRoute || isLib) {
-      if (ts.isInterfaceDeclaration(node)) {
-        addViolation(
-          node,
-          "UNSCOPED_TYPE_DEFINITION",
-          `Ad-hoc interface "${node.name.text}" in ${relPath} is forbidden. Schema is Single Source of Truth (SSOT); declare all models and context types in src/schema/.`,
-        );
-      } else if (ts.isTypeAliasDeclaration(node)) {
-        addViolation(
-          node,
-          "UNSCOPED_TYPE_DEFINITION",
-          `Ad-hoc type alias "${node.name.text}" in ${relPath} is forbidden. Schema is Single Source of Truth (SSOT); declare all models and context types in src/schema/.`,
-        );
+      if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
+        const hasExport = node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+        const isLocalRouteUiType =
+          isRoute && !hasExport && /(?:View|ViewModel|Props)$/.test(node.name.text);
+        if (!isLocalRouteUiType) {
+          const kindLabel = ts.isInterfaceDeclaration(node) ? "interface" : "type alias";
+          addViolation(
+            node,
+            "UNSCOPED_TYPE_DEFINITION",
+            `Ad-hoc ${kindLabel} "${node.name.text}" in ${relPath} is forbidden. Database entities, RPC contracts, and shared context types must be declared in src/schema/ (non-exported *Props / *View / *ViewModel types are allowed in src/routes/).`,
+          );
+        }
       }
     }
 

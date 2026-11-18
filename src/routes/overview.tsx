@@ -9,7 +9,7 @@ export default function Overview() {
   });
 
   return (
-    <VStack gap="6" alignItems="stretch">
+    <VStack as="section" gap="6" alignItems="stretch">
       <Grid columns={{ base: 1, md: 2 }} gap="6">
         {/* Card 1: Fine-Grained Reactivity */}
         <Card.Root>
@@ -60,13 +60,18 @@ export default function Overview() {
 
               <VStack gap="2" alignItems="stretch" py="1">
                 <Text size="xs" tone="muted">
-                  DRAFT-SYNCHRONIZED INPUT PRIMITIVE
+                  CONTROLLED INPUT PRIMITIVE
                 </Text>
-                <Input
-                  value={inputText()}
-                  onValueChange={setInputText}
-                  placeholder="Type to test draft synchronization..."
-                />
+                <HStack gap="2" alignItems="center">
+                  <Input
+                    value={inputText()}
+                    onValueChange={setInputText}
+                    placeholder="Type to test controlled synchronization..."
+                  />
+                  <Button variant="ghost" size="sm" onClick={() => setInputText("")}>
+                    Clear
+                  </Button>
+                </HStack>
                 <HStack gap="2" alignItems="center">
                   <Text size="xs" tone="muted">
                     State Echo:
@@ -119,9 +124,13 @@ export default function Overview() {
                         </Text>
                         <VStack gap="2" alignItems="stretch" py="1">
                           <Text size="xs" tone="muted">
-                            Interactive Dialog Input
+                            Interactive Uncontrolled Dialog Input
                           </Text>
-                          <Input size="sm" placeholder="Modal encapsulated input..." />
+                          <Input
+                            size="sm"
+                            defaultValue=""
+                            placeholder="Modal encapsulated input..."
+                          />
                         </VStack>
                       </Dialog.Body>
 

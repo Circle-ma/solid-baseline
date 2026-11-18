@@ -95,27 +95,29 @@ bun run build
 │   ├── App.tsx           # Canonical foundation starter application (Router + Layout + NavigationBar)
 │   ├── index.css         # Panda CSS cascade layers & local MiSans TC VF @font-face
 │   ├── __tests__/
-│   │   └── diagnostics.test.tsx # 5-scenario @solidjs/diagnostics + Vitest verification matrix
+│   │   ├── diagnostics.test.tsx # 7-scenario @solidjs/diagnostics + Vitest verification matrix
+│   │   └── setup.ts             # HappyDOM spec-compliant textContent test environment setup
 │   ├── gen/              # Buf-generated Protobuf & ConnectRPC typed schemas
 │   ├── routes/           # Declarative page views
-│   │   ├── overview.tsx  # Reactivity counter & Ark UI modal dialog primitives
-│   │   └── realtime.tsx  # SpacetimeDB engine & ConnectRPC telemetry views
+│   │   ├── overview.tsx  # Reactivity counter, controlled/uncontrolled Input & Ark UI dialog
+│   │   └── realtime.tsx  # SpacetimeDB realtime store & ConnectRPC declarative async query views
 │   ├── components/
 │   │   └── ui/           # Paved Path UI Primitives (Button, Badge, Card, Dialog, Layout, Typography, Input, NavLink, Boundary, ThemeToggle, Tokens)
 │   │       ├── boundary.tsx     # Systematic AsyncBoundary (Solid 2.0 <Errored> + <Loading>)
-│   │       ├── input.tsx        # Derived-signal Input primitive (zero EFFECT_RELAY_TEAR)
-│   │       ├── link.tsx         # Accessible NavLink primitive with route memoization
+│   │       ├── input.tsx        # Controlled/uncontrolled Input primitive (zero UNCOMMITTED_INPUT_OVERWRITTEN)
+│   │       ├── layout.tsx       # Semantic layout primitives (BaseStyleProps + extractStyleProps + `as` prop)
+│   │       ├── link.tsx         # Accessible SPA NavLink primitive (Solid Router 2.0 useHref + useLinkState)
 │   │       └── theme-toggle.tsx # Systematic ThemeToggle primitive (zero-FOUC dark/light mode)
-│   ├── lib/              # State & Service Integrations
-│   │   ├── connect.ts    # ConnectRPC type-safe client pipeline with transport injection
-│   │   ├── index.ts      # Unified lib exports
-│   │   ├── spacetime.ts  # Dual-mode SpacetimeDB adapter (Live / Offline Sandbox)
-│   │   └── telemetry.tsx # SSR-Safe Unified Telemetry Context Provider & useTelemetry hook
+│   ├── lib/              # Single-Responsibility Providers & Service Integrations
+│   │   ├── connect.tsx          # SSR-isolated TransportContext, TransportProvider & typed service clients
+│   │   ├── index.ts             # Unified lib exports
+│   │   ├── rpc-provider.tsx     # Declarative ConnectRPC async query provider (createMemo + affects/refresh)
+│   │   ├── spacetime.ts         # Dual-mode SpacetimeDB 2.14 adapter (Live subscription + Offline Sandbox)
+│   │   └── spacetime-provider.tsx # Single-responsibility SpacetimeDB Provider with draft store mutations
 │   └── schema/           # Schema as Single Source of Truth (SSOT)
-│       ├── connect.ts    # ConnectRPC service & generated Protobuf re-exports
+│       ├── connect.ts    # ConnectRPC service, Transport/RPC context & Protobuf contracts
 │       ├── index.ts      # Centralized schema export
-│       ├── spacetimedb.ts# SpacetimeDB adapter, table & reducer contracts
-│       └── telemetry.ts  # Unified telemetry state & event log SSOT contracts
+│       └── spacetimedb.ts# SpacetimeDB adapter, table, reducer & SpacetimeProvider contracts
 ├── tsconfig.json         # Strict TypeScript compiler options
 ├── vite.config.ts        # Vite + Panda CSS + Solid 2.0 compiler pipeline
 └── vitest.config.ts      # Vitest + happy-dom + Solid 2.0 diagnostics test config
@@ -155,9 +157,9 @@ bun run codegen && bun run check && bun run typecheck && bun run build
 Solid.js 2.0 introduces major architectural improvements (fine-grained async computations, removal of `splitProps` / `onMount` in favor of direct property access and `onSettled`/`onCleanup`).
 
 To allow headless UI component libraries powered by Zag.js (`@ark-ui/solid`) to run smoothly on Solid 2.0 without runtime crashes, this baseline includes a scoped compatibility bridge via Bun's `patchedDependencies`:
-- Restores shim interfaces for `splitProps`, `mergeProps`, and `onMount`.
+- Restores shim interfaces for `splitProps`, `mergeProps`, `on`, and `onMount` (backed by Solid 2.0 `onSettled`).
 - Adds `provider.Provider = provider` for React/Solid 1.x style context providers.
-- Scopes `ownedWrite: true` strictly to calls originating from `@zag-js` or `@ark-ui` via call-stack inspection so application code never masks `REACTIVE_WRITE_IN_OWNED_SCOPE`.
-- Preserves native observe/dev diagnostic branches cleanly without polluting global namespaces.
+- Routes legacy 1-argument `createEffect(fn)` calls to Solid 2.0 native `createTrackedEffect` (with lightweight cleanup forwarding), eliminating owned-scope write failures without wrapping `createSignal` or allocating `new Error().stack` on the hot path.
+- Preserves native `createSignal` and observe/dev diagnostic branches cleanly without polluting global namespaces.
 
 This ensures you can build with full Solid 2.0 reactivity today while maintaining 100% accessible Ark UI primitives.

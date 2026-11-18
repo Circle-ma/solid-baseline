@@ -13,7 +13,7 @@ import {
   ThemeToggle,
   VStack,
 } from "~/components/ui";
-import { TelemetryProvider } from "~/lib";
+import { RpcProvider, SpacetimeProvider } from "~/lib";
 import Overview from "~/routes/overview";
 import Realtime from "~/routes/realtime";
 
@@ -33,6 +33,8 @@ export const Router = createRouter({ routes });
 function NavigationBar() {
   return (
     <HStack
+      as="nav"
+      aria-label="Primary navigation"
       gap="2"
       alignItems="center"
       p="1"
@@ -42,7 +44,9 @@ function NavigationBar() {
       borderColor="border.subtle"
     >
       <HStack gap="1" alignItems="center">
-        <NavLink href="/">Overview & Primitives</NavLink>
+        <NavLink href="/" end>
+          Overview & Primitives
+        </NavLink>
         <NavLink href="/realtime">Realtime & Telemetry</NavLink>
       </HStack>
       <Divider orientation="vertical" h="4" borderColor="border.subtle" />
@@ -64,8 +68,8 @@ export default function App() {
         >
           <Container maxW="4xl" p="0">
             <VStack gap="8" alignItems="stretch">
-              {/* Header */}
-              <VStack gap="3" alignItems="stretch">
+              {/* Semantic Header */}
+              <VStack as="header" gap="3" alignItems="stretch">
                 <HStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="4">
                   <HStack gap="3" alignItems="center" flexWrap="wrap">
                     <Heading as="h1" size="2xl" tracking="tight">
@@ -83,15 +87,25 @@ export default function App() {
 
               <Divider borderColor="border.subtle" />
 
-              {/* Routed Page View inside SSR-Safe Telemetry Provider & Async Boundary */}
-              <TelemetryProvider>
-                <AsyncBoundary>{props.children}</AsyncBoundary>
-              </TelemetryProvider>
+              {/* Routed Page View inside SSR-Isolated Single-Responsibility Providers & Async Boundary */}
+              <Box as="main">
+                <SpacetimeProvider>
+                  <RpcProvider>
+                    <AsyncBoundary>{props.children}</AsyncBoundary>
+                  </RpcProvider>
+                </SpacetimeProvider>
+              </Box>
 
               <Divider borderColor="border.subtle" />
 
-              {/* Footer */}
-              <HStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="3">
+              {/* Semantic Footer */}
+              <HStack
+                as="footer"
+                justifyContent="space-between"
+                alignItems="center"
+                flexWrap="wrap"
+                gap="3"
+              >
                 <Text size="xs" tone="muted">
                   Systematic UI Primitives · Solid Router 2.0 · Container Layout · Schema SSOT
                 </Text>

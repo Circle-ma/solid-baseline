@@ -3,6 +3,7 @@ import { defineConfig, defineRecipe, defineSlotRecipe } from "@pandacss/dev";
 const buttonRecipe = defineRecipe({
   className: "button",
   description: "Standard button recipe",
+  jsx: ["Button", "Dialog.Trigger", "Dialog.CloseTrigger", "DialogTrigger", "DialogCloseTrigger"],
   base: {
     display: "inline-flex",
     alignItems: "center",
@@ -87,6 +88,7 @@ const buttonRecipe = defineRecipe({
 const badgeRecipe = defineRecipe({
   className: "badge",
   description: "Standard badge recipe with systematic status intents",
+  jsx: ["Badge"],
   base: {
     display: "inline-flex",
     alignItems: "center",
@@ -261,6 +263,7 @@ const badgeRecipe = defineRecipe({
 const textRecipe = defineRecipe({
   className: "text",
   description: "Canonical typography recipe",
+  jsx: ["Text", "Heading", "Code"],
   base: {
     color: "fg.default",
   },
@@ -343,6 +346,7 @@ const textRecipe = defineRecipe({
 const inputRecipe = defineRecipe({
   className: "input",
   description: "Standard input recipe",
+  jsx: ["Input"],
   base: {
     w: "full",
     borderRadius: "l2",
@@ -391,6 +395,7 @@ const inputRecipe = defineRecipe({
 const navLinkRecipe = defineRecipe({
   className: "nav-link",
   description: "Accessible navigation link recipe",
+  jsx: ["NavLink"],
   base: {
     display: "inline-flex",
     alignItems: "center",
@@ -940,93 +945,10 @@ export default defineConfig({
       },
     },
   },
-  staticCss: {
-    recipes: {
-      button: ["*"],
-      badge: ["*"],
-      text: ["*"],
-      input: ["*"],
-      navLink: ["*"],
-      card: ["*"],
-      dialog: ["*"],
-    },
-    css: [
-      {
-        conditions: ["sm", "md", "lg"],
-        properties: {
-          padding: ["0", "1", "1.5", "2", "2.5", "3", "4", "5", "6", "8", "10", "12", "16", "20"],
-          paddingInline: [
-            "0",
-            "1",
-            "1.5",
-            "2",
-            "2.5",
-            "3",
-            "4",
-            "5",
-            "6",
-            "8",
-            "10",
-            "12",
-            "16",
-            "20",
-          ],
-          paddingBlock: [
-            "0",
-            "1",
-            "1.5",
-            "2",
-            "2.5",
-            "3",
-            "4",
-            "5",
-            "6",
-            "8",
-            "10",
-            "12",
-            "16",
-            "20",
-          ],
-          gap: ["0", "1", "1.5", "2", "2.5", "3", "4", "5", "6", "8", "10", "12", "16", "20"],
-          backgroundColor: [
-            "transparent",
-            "bg.canvas",
-            "bg.default",
-            "bg.elevated",
-            "bg.subtle",
-            "bg.muted",
-            "bg.backdrop",
-            "success.subtle",
-            "danger.subtle",
-            "warning.subtle",
-            "info.subtle",
-          ],
-          borderColor: [
-            "border.subtle",
-            "border.default",
-            "success.border",
-            "danger.border",
-            "warning.border",
-            "info.border",
-          ],
-          borderRadius: ["none", "sm", "md", "l1", "l2", "l3", "full"],
-          zIndex: [
-            "hide",
-            "base",
-            "docked",
-            "dropdown",
-            "sticky",
-            "banner",
-            "overlay",
-            "modal",
-            "popover",
-            "toast",
-            "tooltip",
-            "max",
-          ],
-        },
-      },
-    ],
+  optimize: {
+    removeUnusedTokens: true,
+    removeUnusedKeyframes: true,
+    smartCompoundVariants: true,
   },
   globalCss: {
     body: {

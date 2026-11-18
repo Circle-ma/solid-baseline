@@ -1,3 +1,4 @@
+import { Dynamic, type JSX } from "@solidjs/web";
 import type { ComponentProps, ParentComponent } from "solid-js";
 import { cx } from "styled-system/css";
 import { box, container, divider, grid, hstack, vstack } from "styled-system/patterns";
@@ -13,7 +14,23 @@ import {
   type ZIndexRailToken,
 } from "./tokens";
 
-export interface BoxProps extends Omit<ComponentProps<"div">, "style"> {
+export type SemanticContainerTag =
+  | "div"
+  | "section"
+  | "main"
+  | "nav"
+  | "header"
+  | "footer"
+  | "article"
+  | "ul"
+  | "li"
+  | "form";
+
+/**
+ * Unified Closed-World Layout Style Props
+ * Single source of style tokens shared across Box, Container, VStack, HStack, and Grid.
+ */
+export interface BaseStyleProps {
   position?: SystemProperties["position"];
   top?: SystemProperties["top"];
   bottom?: SystemProperties["bottom"];
@@ -49,369 +66,195 @@ export interface BoxProps extends Omit<ComponentProps<"div">, "style"> {
   mx?: "auto";
 }
 
-export const Box: ParentComponent<BoxProps> = (props) => {
+export interface SemanticContainerProps
+  extends Omit<JSX.HTMLAttributes<HTMLElement>, "style" | "color">,
+    BaseStyleProps {
+  as?: SemanticContainerTag;
+}
+
+const BASE_STYLE_PROP_KEYS = [
+  "position",
+  "top",
+  "bottom",
+  "left",
+  "right",
+  "inset",
+  "zIndex",
+  "minH",
+  "maxH",
+  "minW",
+  "maxW",
+  "w",
+  "h",
+  "bg",
+  "color",
+  "p",
+  "px",
+  "py",
+  "borderWidth",
+  "borderStyle",
+  "borderColor",
+  "borderRadius",
+  "overflow",
+  "overflowX",
+  "overflowY",
+  "boxShadow",
+  "display",
+  "flex",
+  "flexGrow",
+  "flexShrink",
+  "ml",
+  "mr",
+  "mx",
+] as const satisfies readonly (keyof BaseStyleProps)[];
+
+/**
+ * Separates closed-world style props from native HTML attributes using Solid 2.0 `omit`.
+ * Reads style prop values lazily inside `getStyleProps()` so component bodies stay untracked.
+ */
+function extractStyleProps<T extends SemanticContainerProps, K extends readonly (keyof T)[]>(
+  props: T,
+  ...extraKeys: K
+) {
   const rest = omitProps(
     props,
-    "position",
-    "top",
-    "bottom",
-    "left",
-    "right",
-    "inset",
-    "zIndex",
-    "minH",
-    "maxH",
-    "minW",
-    "maxW",
-    "w",
-    "h",
-    "bg",
-    "color",
-    "p",
-    "px",
-    "py",
-    "borderWidth",
-    "borderStyle",
-    "borderColor",
-    "borderRadius",
-    "overflow",
-    "overflowX",
-    "overflowY",
-    "boxShadow",
-    "display",
-    "flex",
-    "flexGrow",
-    "flexShrink",
-    "ml",
-    "mr",
-    "mx",
+    ...BASE_STYLE_PROP_KEYS,
+    ...extraKeys,
+    "as",
     "class",
     "children",
     "style",
   );
+
+  const getStyleProps = (): BaseStyleProps => {
+    const styles: Partial<Record<keyof BaseStyleProps, unknown>> = {};
+    for (const key of BASE_STYLE_PROP_KEYS) {
+      const val = props[key];
+      if (val !== undefined) {
+        styles[key] = val;
+      }
+    }
+    return styles as BaseStyleProps;
+  };
+
+  return { getStyleProps, rest };
+}
+
+export type BoxProps = SemanticContainerProps;
+
+export const Box: ParentComponent<BoxProps> = (props) => {
+  const { getStyleProps, rest } = extractStyleProps(props);
   return (
-    <div
+    <Dynamic
+      component={props.as ?? "div"}
       {...rest}
       class={cx(
         box({
-          position: props.position,
-          top: props.top,
-          bottom: props.bottom,
-          left: props.left,
-          right: props.right,
-          inset: props.inset,
-          zIndex: props.zIndex,
-          minH: props.minH,
-          maxH: props.maxH,
-          minW: props.minW,
-          maxW: props.maxW,
-          w: props.w,
-          h: props.h,
-          bg: props.bg,
-          color: props.color,
-          p: props.p,
-          px: props.px,
-          py: props.py,
-          borderWidth: props.borderWidth,
-          borderStyle: props.borderStyle,
-          borderColor: props.borderColor,
-          borderRadius: props.borderRadius,
-          overflow: props.overflow,
-          overflowX: props.overflowX,
-          overflowY: props.overflowY,
-          boxShadow: props.boxShadow,
-          display: props.display,
-          flex: props.flex,
-          flexGrow: props.flexGrow,
-          flexShrink: props.flexShrink,
-          ml: props.ml,
-          mr: props.mr,
-          mx: props.mx,
+          ...getStyleProps(),
           boxSizing: "border-box",
         }),
         toClass(props.class),
       )}
     >
       {props.children}
-    </div>
+    </Dynamic>
   );
 };
 
-export interface ContainerProps extends Omit<ComponentProps<"div">, "style"> {
-  maxW?: SystemProperties["maxWidth"];
-  p?: ConditionalValue<SpacingRailToken>;
-  px?: ConditionalValue<SpacingRailToken>;
-  py?: ConditionalValue<SpacingRailToken>;
-}
+export type ContainerProps = SemanticContainerProps;
 
 export const Container: ParentComponent<ContainerProps> = (props) => {
-  const rest = omitProps(props, "maxW", "p", "px", "py", "class", "children", "style");
+  const { getStyleProps, rest } = extractStyleProps(props);
   return (
-    <div
+    <Dynamic
+      component={props.as ?? "div"}
       {...rest}
       class={cx(
         container({
-          maxW: props.maxW,
-          p: props.p,
-          px: props.px,
-          py: props.py,
-          w: "full",
+          ...getStyleProps(),
+          w: props.w ?? "full",
         }),
         toClass(props.class),
       )}
     >
       {props.children}
-    </div>
+    </Dynamic>
   );
 };
 
-export interface VStackProps extends Omit<ComponentProps<"div">, "style"> {
+export interface VStackProps extends SemanticContainerProps {
   gap?: ConditionalValue<SpacingRailToken>;
   alignItems?: SystemProperties["alignItems"];
   justifyContent?: SystemProperties["justifyContent"];
-  position?: SystemProperties["position"];
-  zIndex?: ConditionalValue<ZIndexRailToken>;
-  minH?: SystemProperties["minHeight"];
-  maxH?: SystemProperties["maxHeight"];
-  h?: SystemProperties["height"];
-  minW?: SystemProperties["minWidth"];
-  maxW?: SystemProperties["maxWidth"];
-  w?: SystemProperties["width"];
-  overflow?: SystemProperties["overflow"];
-  overflowX?: SystemProperties["overflowX"];
-  overflowY?: SystemProperties["overflowY"];
-  borderWidth?: SystemProperties["borderWidth"];
-  borderStyle?: SystemProperties["borderStyle"];
-  borderColor?: ConditionalValue<BorderColorToken>;
-  borderRadius?: ConditionalValue<RadiusRailToken>;
-  p?: ConditionalValue<SpacingRailToken>;
-  px?: ConditionalValue<SpacingRailToken>;
-  py?: ConditionalValue<SpacingRailToken>;
-  bg?: ConditionalValue<SurfaceToken>;
-  color?: ConditionalValue<ForegroundToken>;
-  boxShadow?: SystemProperties["boxShadow"];
-  flex?: SystemProperties["flex"];
-  flexGrow?: SystemProperties["flexGrow"];
-  flexShrink?: SystemProperties["flexShrink"];
-  ml?: "auto";
-  mr?: "auto";
-  mx?: "auto";
 }
 
 export const VStack: ParentComponent<VStackProps> = (props) => {
-  const rest = omitProps(
-    props,
-    "gap",
-    "alignItems",
-    "justifyContent",
-    "position",
-    "zIndex",
-    "minH",
-    "maxH",
-    "h",
-    "minW",
-    "maxW",
-    "w",
-    "overflow",
-    "overflowX",
-    "overflowY",
-    "borderWidth",
-    "borderStyle",
-    "borderColor",
-    "borderRadius",
-    "p",
-    "px",
-    "py",
-    "bg",
-    "color",
-    "boxShadow",
-    "flex",
-    "flexGrow",
-    "flexShrink",
-    "ml",
-    "mr",
-    "mx",
-    "class",
-    "children",
-    "style",
-  );
+  const { getStyleProps, rest } = extractStyleProps(props, "gap", "alignItems", "justifyContent");
   return (
-    <div
+    <Dynamic
+      component={props.as ?? "div"}
       {...rest}
       class={cx(
         vstack({
+          ...getStyleProps(),
           gap: props.gap ?? "4",
           alignItems: props.alignItems ?? "stretch",
           justify: props.justifyContent,
-          position: props.position,
-          zIndex: props.zIndex,
-          minH: props.minH,
-          maxH: props.maxH,
-          h: props.h,
-          minW: props.minW,
-          maxW: props.maxW,
-          w: props.w,
-          overflow: props.overflow,
-          overflowX: props.overflowX,
-          overflowY: props.overflowY,
-          borderWidth: props.borderWidth,
-          borderStyle: props.borderStyle,
-          borderColor: props.borderColor,
-          borderRadius: props.borderRadius,
-          p: props.p,
-          px: props.px,
-          py: props.py,
-          bg: props.bg,
-          color: props.color,
-          boxShadow: props.boxShadow,
-          flex: props.flex,
-          flexGrow: props.flexGrow,
-          flexShrink: props.flexShrink,
-          ml: props.ml,
-          mr: props.mr,
-          mx: props.mx,
         }),
         toClass(props.class),
       )}
     >
       {props.children}
-    </div>
+    </Dynamic>
   );
 };
 
-export interface HStackProps extends Omit<ComponentProps<"div">, "style"> {
+export interface HStackProps extends SemanticContainerProps {
   gap?: ConditionalValue<SpacingRailToken>;
   alignItems?: SystemProperties["alignItems"];
   justifyContent?: SystemProperties["justifyContent"];
-  position?: SystemProperties["position"];
-  zIndex?: ConditionalValue<ZIndexRailToken>;
-  minH?: SystemProperties["minHeight"];
-  maxH?: SystemProperties["maxHeight"];
-  h?: SystemProperties["height"];
-  minW?: SystemProperties["minWidth"];
-  maxW?: SystemProperties["maxWidth"];
-  w?: SystemProperties["width"];
   flexWrap?: SystemProperties["flexWrap"];
-  overflow?: SystemProperties["overflow"];
-  overflowX?: SystemProperties["overflowX"];
-  overflowY?: SystemProperties["overflowY"];
-  borderWidth?: SystemProperties["borderWidth"];
-  borderStyle?: SystemProperties["borderStyle"];
-  borderColor?: ConditionalValue<BorderColorToken>;
-  borderRadius?: ConditionalValue<RadiusRailToken>;
-  p?: ConditionalValue<SpacingRailToken>;
-  px?: ConditionalValue<SpacingRailToken>;
-  py?: ConditionalValue<SpacingRailToken>;
-  bg?: ConditionalValue<SurfaceToken>;
-  color?: ConditionalValue<ForegroundToken>;
-  boxShadow?: SystemProperties["boxShadow"];
-  flex?: SystemProperties["flex"];
-  flexGrow?: SystemProperties["flexGrow"];
-  flexShrink?: SystemProperties["flexShrink"];
-  ml?: "auto";
-  mr?: "auto";
-  mx?: "auto";
 }
 
 export const HStack: ParentComponent<HStackProps> = (props) => {
-  const rest = omitProps(
+  const { getStyleProps, rest } = extractStyleProps(
     props,
     "gap",
     "alignItems",
     "justifyContent",
-    "position",
-    "zIndex",
-    "minH",
-    "maxH",
-    "h",
-    "minW",
-    "maxW",
-    "w",
     "flexWrap",
-    "overflow",
-    "overflowX",
-    "overflowY",
-    "borderWidth",
-    "borderStyle",
-    "borderColor",
-    "borderRadius",
-    "p",
-    "px",
-    "py",
-    "bg",
-    "color",
-    "boxShadow",
-    "flex",
-    "flexGrow",
-    "flexShrink",
-    "ml",
-    "mr",
-    "mx",
-    "class",
-    "children",
-    "style",
   );
   return (
-    <div
+    <Dynamic
+      component={props.as ?? "div"}
       {...rest}
       class={cx(
         hstack({
+          ...getStyleProps(),
           gap: props.gap ?? "3",
           alignItems: props.alignItems ?? "center",
           justify: props.justifyContent,
-          position: props.position,
-          zIndex: props.zIndex,
-          minH: props.minH,
-          maxH: props.maxH,
-          h: props.h,
-          minW: props.minW,
-          maxW: props.maxW,
-          w: props.w,
           flexWrap: props.flexWrap,
-          overflow: props.overflow,
-          overflowX: props.overflowX,
-          overflowY: props.overflowY,
-          borderWidth: props.borderWidth,
-          borderStyle: props.borderStyle,
-          borderColor: props.borderColor,
-          borderRadius: props.borderRadius,
-          p: props.p,
-          px: props.px,
-          py: props.py,
-          bg: props.bg,
-          color: props.color,
-          boxShadow: props.boxShadow,
-          flex: props.flex,
-          flexGrow: props.flexGrow,
-          flexShrink: props.flexShrink,
-          ml: props.ml,
-          mr: props.mr,
-          mx: props.mx,
         }),
         toClass(props.class),
       )}
     >
       {props.children}
-    </div>
+    </Dynamic>
   );
 };
 
-export interface GridProps extends Omit<ComponentProps<"div">, "style"> {
+export interface GridProps extends SemanticContainerProps {
   columns?: ConditionalValue<number>;
   gap?: ConditionalValue<SpacingRailToken>;
   rowGap?: ConditionalValue<SpacingRailToken>;
   columnGap?: ConditionalValue<SpacingRailToken>;
   alignItems?: SystemProperties["alignItems"];
   justifyContent?: SystemProperties["justifyContent"];
-  w?: SystemProperties["width"];
-  minH?: SystemProperties["minHeight"];
-  p?: ConditionalValue<SpacingRailToken>;
-  px?: ConditionalValue<SpacingRailToken>;
-  py?: ConditionalValue<SpacingRailToken>;
 }
 
 export const Grid: ParentComponent<GridProps> = (props) => {
-  const rest = omitProps(
+  const { getStyleProps, rest } = extractStyleProps(
     props,
     "columns",
     "gap",
@@ -419,20 +262,14 @@ export const Grid: ParentComponent<GridProps> = (props) => {
     "columnGap",
     "alignItems",
     "justifyContent",
-    "w",
-    "minH",
-    "p",
-    "px",
-    "py",
-    "class",
-    "children",
-    "style",
   );
   return (
-    <div
+    <Dynamic
+      component={props.as ?? "div"}
       {...rest}
       class={cx(
         grid({
+          ...getStyleProps(),
           columns: props.columns ?? 1,
           gap: props.gap ?? "6",
           rowGap: props.rowGap,
@@ -440,16 +277,12 @@ export const Grid: ParentComponent<GridProps> = (props) => {
           alignItems: props.alignItems,
           justifyContent: props.justifyContent,
           w: props.w ?? "full",
-          minH: props.minH,
-          p: props.p,
-          px: props.px,
-          py: props.py,
         }),
         toClass(props.class),
       )}
     >
       {props.children}
-    </div>
+    </Dynamic>
   );
 };
 

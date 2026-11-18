@@ -1,3 +1,4 @@
 export * from "./connect";
+export * from "./rpc-provider";
 export * from "./spacetime";
-export * from "./telemetry";
+export * from "./spacetime-provider";

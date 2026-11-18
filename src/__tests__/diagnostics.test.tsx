@@ -5,12 +5,18 @@ import {
   expectNoDiagnostics,
   expectNoWaste,
 } from "@solidjs/diagnostics";
+import { createRouter, defineRoute, defineRoutes, memoryHistory } from "@solidjs/router";
 import { render } from "@solidjs/web";
-import { action, createMemo, createSignal, flush } from "solid-js";
+import { action, createMemo, createSignal, flush, isPending, untrack } from "solid-js";
 import { describe, expect, it } from "vitest";
-import { AsyncBoundary, Box, Dialog, Input, Text } from "~/components/ui";
-import { TelemetryProvider, useTelemetry } from "~/lib";
-import { setGlobalTransport } from "~/lib/connect";
+import { AsyncBoundary, Box, Dialog, HStack, Input, NavLink, Text } from "~/components/ui";
+import {
+  OfflineSandboxSpacetimeAdapter,
+  RpcProvider,
+  SpacetimeProvider,
+  useRpc,
+  useSpacetime,
+} from "~/lib";
 import Overview from "~/routes/overview";
 import { HealthCheckStatus, SystemService } from "~/schema";
 
@@ -42,47 +48,85 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
     container.remove();
   });
 
-  // Scenario 2: Controlled / derived Input consecutive typing
-  it("Scenario 2: Controlled / derived Input consecutive typing has zero diagnostics and zero waste", async () => {
+  // Scenario 2: Controlled Input typing + external reset & uncontrolled Input without UNCOMMITTED_INPUT_OVERWRITTEN
+  it("Scenario 2: Controlled Input typing, external state reset, and uncontrolled Input have zero diagnostics", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    let currentVal = "start";
+    const [controlledVal, setControlledVal] = createSignal("start", {
+      name: "test-controlled-input",
+    });
+    const [isInvalid, setIsInvalid] = createSignal(false, {
+      name: "test-uncontrolled-invalid",
+    });
+
     const dispose = render(
       () => (
-        <Input
-          value={currentVal}
-          onValueChange={(val) => {
-            currentVal = val;
-          }}
-          placeholder="Type here..."
-        />
+        <Box>
+          <Input
+            data-testid="controlled"
+            value={controlledVal()}
+            onValueChange={setControlledVal}
+            placeholder="Controlled..."
+          />
+          <Input
+            data-testid="uncontrolled"
+            defaultValue="initial-uncontrolled"
+            invalid={isInvalid()}
+            placeholder="Uncontrolled..."
+          />
+        </Box>
       ),
       container,
     );
 
-    const inputEl = container.querySelector("input");
-    expect(inputEl).toBeDefined();
+    const controlledEl = container.querySelector(
+      "input[data-testid='controlled']",
+    ) as HTMLInputElement | null;
+    const uncontrolledEl = container.querySelector(
+      "input[data-testid='uncontrolled']",
+    ) as HTMLInputElement | null;
+    expect(controlledEl).not.toBeNull();
+    expect(uncontrolledEl).not.toBeNull();
+    expect(controlledEl?.value).toBe("start");
+    expect(uncontrolledEl?.value).toBe("initial-uncontrolled");
 
     const { artifact } = await captureArtifact(
       async () => {
-        if (inputEl) {
-          inputEl.value = "start-1";
-          inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-          inputEl.value = "start-12";
-          inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-          inputEl.value = "start-123";
-          inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+        if (controlledEl) {
+          // 1. Consecutive typing on controlled input
+          controlledEl.value = "start-1";
+          controlledEl.dispatchEvent(new Event("input", { bubbles: true }));
+          flush();
+          controlledEl.value = "start-123";
+          controlledEl.dispatchEvent(new Event("input", { bubbles: true }));
+          flush();
         }
+        expect(untrack(() => controlledVal())).toBe("start-123");
+
+        // 2. External form reset (e.g. setInputText("")) seamlessly clears DOM value
+        setControlledVal("");
+        flush();
+        expect(controlledEl?.value).toBe("");
+
+        // 3. Typing in uncontrolled input while sibling attribute (`invalid`) updates
+        if (uncontrolledEl) {
+          uncontrolledEl.value = "user-typed-text";
+          uncontrolledEl.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        setIsInvalid(true);
+        flush();
+        expect(uncontrolledEl?.value).toBe("user-typed-text");
       },
-      { scenario: "scenario-2-input-typing" },
+      { scenario: "scenario-2-input-controlled-reset-and-uncontrolled" },
     );
 
     expect(artifact).toBeDefined();
     expectNoDiagnostics(artifact);
     expectNoWaste(artifact);
     assertBudget(artifact, { maxSilentHoldMs: 0 });
-    expect(currentVal).toBe("start-123");
+    expect(untrack(() => controlledVal())).toBe("");
+    expect(controlledEl?.value).toBe("");
 
     dispose();
     container.remove();
@@ -105,7 +149,7 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
                   <Dialog.Title>Modal Title</Dialog.Title>
                 </Dialog.Header>
                 <Dialog.Body>
-                  <Input placeholder="Dialog input" />
+                  <Input defaultValue="" placeholder="Dialog input" />
                 </Dialog.Body>
                 <Dialog.Footer>
                   <Dialog.CloseTrigger>Close Modal</Dialog.CloseTrigger>
@@ -160,67 +204,235 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
     container.remove();
   });
 
-  // Scenario 4: Real ConnectRPC async call and optimistic hold (Loop 4)
-  it("Scenario 4: ConnectRPC async invocation with optimistic hold has zero silent hold and zero diagnostics", async () => {
+  // Scenario 4: Declarative ConnectRPC async query via RpcProvider (zero OPTIMISTIC_REVERTED)
+  it("Scenario 4: Declarative ConnectRPC async query & refresh has zero diagnostics and zero silent holds", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    // Configure in-memory transport using real SystemService schema
+    let callCount = 0;
     const routerTransport = createRouterTransport((router) => {
       router.service(SystemService, {
         async checkHealth(_req) {
+          callCount += 1;
           return {
             status: HealthCheckStatus.SERVING,
-            version: "2026.1.0",
-            uptimeSeconds: 123.45,
+            version: `2026.2.${callCount}`,
+            uptimeSeconds: 100 + callCount,
           };
         },
       });
     });
-    setGlobalTransport(routerTransport);
 
-    let telemetryRef!: ReturnType<typeof useTelemetry>;
+    let rpcRef!: ReturnType<typeof useRpc>;
     function Consumer() {
-      telemetryRef = useTelemetry();
+      rpcRef = useRpc();
+      const pending = createMemo(() => isPending(() => rpcRef.healthQuery()), {
+        name: "test-rpc-pending",
+      });
+      return (
+        <AsyncBoundary>
+          <Box>
+            <Text data-testid="rpc-pending">{pending() ? "Pending" : "Idle"}</Text>
+            <Text data-testid="rpc-version">
+              {rpcRef.healthQuery()?.response.version ?? "uncalled"}
+            </Text>
+          </Box>
+        </AsyncBoundary>
+      );
+    }
+
+    const dispose = render(
+      () => (
+        <RpcProvider transport={routerTransport}>
+          <Consumer />
+        </RpcProvider>
+      ),
+      container,
+    );
+
+    expect(rpcRef).toBeDefined();
+    expect(container.textContent).toContain("uncalled");
+
+    const { artifact } = await captureArtifact(
+      async () => {
+        // 1. First declarative query invocation
+        const first = await rpcRef.refreshHealth({});
+        expect(first?.response.status).toBe(HealthCheckStatus.SERVING);
+        expect(first?.response.version).toBe("2026.2.1");
+
+        // 2. Subsequent declarative refresh via `affects(healthQuery) + refresh(healthQuery)`
+        const second = await rpcRef.refreshHealth();
+        expect(second?.response.version).toBe("2026.2.2");
+      },
+      { scenario: "scenario-4-declarative-connectrpc-query" },
+    );
+
+    expect(artifact).toBeDefined();
+    // Strict zero-exception diagnostics check (no OPTIMISTIC_REVERTED allowlist!)
+    expectNoDiagnostics(artifact);
+    expectNoWaste(artifact);
+    assertBudget(artifact, { maxSilentHoldMs: 0 });
+    expect(container.textContent).toContain("2026.2.2");
+    expect(callCount).toBe(2);
+
+    dispose();
+    container.remove();
+  });
+
+  // Scenario 5: SPA Route Navigation via Solid Router 2.0 + NavLink (zero page reload)
+  it("Scenario 5: SPA NavLink navigation switches route and updates aria-current without page reload", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const history = memoryHistory("/");
+    const testRoutes = defineRoutes([
+      defineRoute({
+        path: "/",
+        component: () => <Text data-testid="route-view">Home Route View</Text>,
+      }),
+      defineRoute({
+        path: "/realtime",
+        component: () => <Text data-testid="route-view">Realtime Route View</Text>,
+      }),
+    ]);
+
+    const TestRouter = createRouter({ routes: testRoutes, history });
+
+    const dispose = render(
+      () => (
+        <TestRouter>
+          {(props) => (
+            <Box>
+              <HStack as="nav">
+                <NavLink href="/" end activeClass="nav-is-active" inactiveClass="nav-is-inactive">
+                  Home
+                </NavLink>
+                <NavLink
+                  href="/realtime"
+                  activeClass="nav-is-active"
+                  inactiveClass="nav-is-inactive"
+                >
+                  Realtime
+                </NavLink>
+              </HStack>
+              <Box as="main">{props.children}</Box>
+            </Box>
+          )}
+        </TestRouter>
+      ),
+      container,
+    );
+
+    const homeLink = container.querySelector("a[href='/']") as HTMLAnchorElement | null;
+    const realtimeLink = container.querySelector("a[href='/realtime']") as HTMLAnchorElement | null;
+    expect(homeLink).not.toBeNull();
+    expect(realtimeLink).not.toBeNull();
+    expect(homeLink?.getAttribute("aria-current")).toBe("page");
+    expect(realtimeLink?.getAttribute("aria-current")).toBeNull();
+    expect(container.textContent).toContain("Home Route View");
+
+    const { artifact } = await captureArtifact(
+      async () => {
+        const clickEvent = new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        });
+        realtimeLink?.dispatchEvent(clickEvent);
+        // Solid Router 2.0 native click delegation calls preventDefault() for SPA navigation
+        expect(clickEvent.defaultPrevented).toBe(true);
+        flush();
+      },
+      { scenario: "scenario-5-spa-navlink-navigation" },
+    );
+
+    expect(artifact).toBeDefined();
+    expectNoDiagnostics(artifact);
+    assertBudget(artifact, {
+      maxSilentHoldMs: 0,
+      scopes: { "nav-link-active": 2, "nav-link-current": 2 },
+    });
+    expect(history.get()).toBe("/realtime");
+    expect(container.textContent).toContain("Realtime Route View");
+    expect(homeLink?.getAttribute("aria-current")).toBeNull();
+    expect(realtimeLink?.getAttribute("aria-current")).toBe("page");
+    expect(realtimeLink?.className).toContain("nav-is-active");
+    expect(homeLink?.className).toContain("nav-is-inactive");
+
+    dispose();
+    container.remove();
+  });
+
+  // Scenario 6: SpacetimeDB SpacetimeProvider fine-grained store draft mutations
+  it("Scenario 6: SpacetimeProvider incremental draft mutations have zero diagnostics and zero waste", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const sandboxAdapter = new OfflineSandboxSpacetimeAdapter();
+    let spacetimeRef!: ReturnType<typeof useSpacetime>;
+
+    function StoreConsumer() {
+      spacetimeRef = useSpacetime();
       return (
         <Box>
-          <Text>{telemetryRef.isRpcPending() ? "Hold Active" : "Idle"}</Text>
-          <Text>{telemetryRef.rpcResponse()?.version ?? "no-version"}</Text>
+          <Text data-testid="record-count">{spacetimeRef.records.length}</Text>
+          <Text data-testid="first-action">{spacetimeRef.records[0]?.action ?? "empty"}</Text>
         </Box>
       );
     }
 
     const dispose = render(
       () => (
-        <TelemetryProvider>
-          <Consumer />
-        </TelemetryProvider>
+        <SpacetimeProvider adapter={sandboxAdapter}>
+          <StoreConsumer />
+        </SpacetimeProvider>
       ),
       container,
     );
 
-    expect(telemetryRef).toBeDefined();
+    expect(spacetimeRef.records.length).toBe(2);
 
     const { artifact } = await captureArtifact(
       async () => {
-        await telemetryRef.checkSystemHealth({});
+        await spacetimeRef.callReducer({
+          action: "TX_DRAFT_INSERT",
+          payload: "Fine-grained draft unshift",
+        });
+        flush();
+
+        const insertedId = spacetimeRef.records[0]?.id;
+        expect(insertedId).toBeDefined();
+
+        if (insertedId) {
+          sandboxAdapter.emitUpdate({
+            id: insertedId,
+            sender: "sandbox_node_local",
+            action: "TX_DRAFT_UPDATED",
+            payload: "In-place draft mutation",
+            timestamp: "00:00:01",
+          });
+          flush();
+          expect(spacetimeRef.records[0]?.action).toBe("TX_DRAFT_UPDATED");
+
+          sandboxAdapter.emitDelete(insertedId);
+          flush();
+          expect(spacetimeRef.records.length).toBe(2);
+        }
       },
-      { scenario: "scenario-4-connectrpc-optimistic-hold" },
+      { scenario: "scenario-6-spacetime-draft-mutations" },
     );
 
     expect(artifact).toBeDefined();
-    expectNoDiagnostics(artifact, { allow: ["OPTIMISTIC_REVERTED"] });
+    expectNoDiagnostics(artifact);
     expectNoWaste(artifact);
-    assertBudget(artifact, { maxSilentHoldMs: 0, allow: ["OPTIMISTIC_REVERTED"] });
-    expect(telemetryRef.rpcResponse()?.status).toBe(HealthCheckStatus.SERVING);
-    expect(telemetryRef.rpcResponse()?.version).toBe("2026.1.0");
+    assertBudget(artifact, { maxSilentHoldMs: 0 });
 
     dispose();
     container.remove();
   });
 
-  // Scenario 5: AsyncBoundary suspending and error self-healing
-  it("Scenario 5: AsyncBoundary suspending & error self-healing with zero diagnostics and zero waste", async () => {
+  // Scenario 7: AsyncBoundary suspending and error self-healing
+  it("Scenario 7: AsyncBoundary suspending & error self-healing with zero diagnostics and zero waste", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
 
@@ -267,7 +479,7 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
         await heal();
         flush();
       },
-      { scenario: "scenario-5-async-boundary-healing" },
+      { scenario: "scenario-7-async-boundary-healing" },
     );
 
     expect(artifact).toBeDefined();
