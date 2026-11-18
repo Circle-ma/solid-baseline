@@ -1,5 +1,13 @@
 import { createMemo, createSignal } from "solid-js";
+import { css } from "styled-system/css";
 import { Button, Card, Dialog, Grid, HStack, Input, Text, VStack } from "~/components/ui";
+
+const metricSummaryBarClass = css({
+  justifyContent: "space-between",
+  p: "4",
+  bg: "bg.subtle",
+  borderRadius: "l2",
+});
 
 export default function Overview() {
   const [count, setCount] = createSignal(0, { name: "counter-value" });
@@ -21,13 +29,7 @@ export default function Overview() {
           </Card.Header>
           <Card.Body>
             <VStack gap="4" alignItems="stretch">
-              <HStack
-                justifyContent="space-between"
-                alignItems="center"
-                p="4"
-                bg="bg.subtle"
-                borderRadius="l2"
-              >
+              <HStack class={metricSummaryBarClass}>
                 <VStack gap="1" alignItems="flex-start">
                   <Text size="xs" tone="muted">
                     COUNTER SIGNAL
@@ -59,11 +61,13 @@ export default function Overview() {
               </HStack>
 
               <VStack gap="2" alignItems="stretch" py="1">
-                <Text size="xs" tone="muted">
+                <Text as="label" for="overview-controlled-input" size="xs" tone="muted">
                   CONTROLLED INPUT PRIMITIVE
                 </Text>
                 <HStack gap="2" alignItems="center">
                   <Input
+                    id="overview-controlled-input"
+                    aria-label="Controlled input primitive"
                     value={inputText()}
                     onValueChange={setInputText}
                     placeholder="Type to test controlled synchronization..."
@@ -107,7 +111,7 @@ export default function Overview() {
                   <Dialog.Backdrop />
                   <Dialog.Positioner>
                     <Dialog.Content>
-                      <Dialog.CloseTrigger />
+                      <Dialog.CloseButton />
 
                       <Dialog.Header>
                         <Dialog.Title>Zag.js State Machine</Dialog.Title>
@@ -123,10 +127,12 @@ export default function Overview() {
                           restoration, and keyboard Escape dismissal.
                         </Text>
                         <VStack gap="2" alignItems="stretch" py="1">
-                          <Text size="xs" tone="muted">
+                          <Text as="label" for="dialog-uncontrolled-input" size="xs" tone="muted">
                             Interactive Uncontrolled Dialog Input
                           </Text>
                           <Input
+                            id="dialog-uncontrolled-input"
+                            aria-label="Interactive uncontrolled dialog input"
                             size="sm"
                             defaultValue=""
                             placeholder="Modal encapsulated input..."
@@ -135,12 +141,20 @@ export default function Overview() {
                       </Dialog.Body>
 
                       <Dialog.Footer>
-                        <Dialog.CloseTrigger variant="outline" size="sm">
-                          Cancel
-                        </Dialog.CloseTrigger>
-                        <Dialog.CloseTrigger variant="solid" size="sm">
-                          Confirm & Close
-                        </Dialog.CloseTrigger>
+                        <Dialog.CloseTrigger
+                          asChild={(triggerProps) => (
+                            <Button {...triggerProps()} variant="outline" size="sm">
+                              Cancel
+                            </Button>
+                          )}
+                        />
+                        <Dialog.CloseTrigger
+                          asChild={(triggerProps) => (
+                            <Button {...triggerProps()} variant="solid" size="sm">
+                              Confirm & Close
+                            </Button>
+                          )}
+                        />
                       </Dialog.Footer>
                     </Dialog.Content>
                   </Dialog.Positioner>

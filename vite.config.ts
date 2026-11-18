@@ -23,6 +23,16 @@ export default defineConfig({
   server: {
     port: 3000,
     strictPort: false,
+    proxy: {
+      "/system.v1.SystemService": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/healthz": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     target: "esnext",

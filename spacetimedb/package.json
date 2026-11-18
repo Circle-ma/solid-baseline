@@ -1,0 +1,13 @@
+{
+  "name": "system-db-module",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "publish:local": "spacetime publish --project-path . --server http://localhost:3001 system_db"
+  },
+  "dependencies": {
+    "spacetimedb": "^2.15.0"
+  }
+}

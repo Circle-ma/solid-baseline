@@ -1,9 +1,10 @@
-import type { Transport } from "@connectrpc/connect";
+import type { DescService } from "@bufbuild/protobuf";
+import type { Client, Transport } from "@connectrpc/connect";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import type { ParentComponent } from "solid-js";
 import { createContext, untrack, useContext } from "solid-js";
-import type { TransportProviderProps } from "~/schema";
+import type { TransportProviderProps } from "~/schema/connect";
 
 /**
  * ConnectRPC Client Architecture (SSR-Isolated)
@@ -14,9 +15,7 @@ import type { TransportProviderProps } from "~/schema";
  */
 
 const DEFAULT_API_BASE_URL =
-  (typeof process !== "undefined" && process.env?.VITE_API_URL) ||
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  "http://localhost:8080";
+  (typeof import.meta !== "undefined" ? import.meta.env?.VITE_API_URL : undefined) ?? "";
 
 /**
  * Creates a fresh ConnectRPC HTTP/Fetch transport instance scoped to a provider or request.
@@ -52,19 +51,9 @@ export function useTransport(): Transport {
 /**
  * Instantiates a typed ConnectRPC service client bound to an explicit transport.
  */
-export function createServiceClient<T extends Parameters<typeof createClient>[0]>(
+export function createServiceClient<T extends DescService>(
   service: T,
   transport: Transport,
-) {
+): Client<T> {
   return createClient(service, transport);
-}
-
-/**
- * Instantiates a typed ConnectRPC service client bound to the enclosing `<TransportProvider>`.
- */
-export function useServiceClient<T extends Parameters<typeof createClient>[0]>(
-  service: T,
-  transport?: Transport,
-) {
-  return createClient(service, transport ?? useTransport());
 }

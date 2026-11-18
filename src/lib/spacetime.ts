@@ -1,73 +1,64 @@
 import { reconcile } from "solid-js";
+import { DbConnectionBuilder, DbConnectionImpl } from "spacetimedb";
 import {
-  DbConnectionBuilder,
-  DbConnectionImpl,
-  procedures,
-  reducerSchema,
-  reducers,
-  schema,
-  t,
-  table,
-} from "spacetimedb";
-import type {
-  EventLogRecord,
-  SpacetimeClientAdapter,
-  SpacetimeConnectionOptions,
-  SpacetimeDeleteCallback,
-  SpacetimeEventCallback,
-  SpacetimeSnapshotCallback,
-  SpacetimeTransactionResult,
-  TxReducerParams,
-} from "~/schema";
+  type EventLogRecord,
+  SPACETIME_REMOTE_MODULE,
+  type SpacetimeClientAdapter,
+  type SpacetimeConnectionOptions,
+  type SpacetimeDeleteCallback,
+  type SpacetimeErrorCallback,
+  type SpacetimeEventCallback,
+  type SpacetimeIdentityCallback,
+  type SpacetimeLiveConnectionBuilderLike,
+  type SpacetimeLiveConnectionLike,
+  type SpacetimeReducerName,
+  type SpacetimeReducerParamsMap,
+  type SpacetimeReducersClient,
+  type SpacetimeSnapshotCallback,
+  type SpacetimeTransactionResult,
+  type TxReducerParams,
+} from "~/schema/spacetimedb";
 
-/**
- * Canonical SpacetimeDB 2.15.x RemoteModule descriptor derived from SSOT event_log & tx_event.
- */
-const eventLogTables = schema({
-  event_log: table(
-    { name: "event_log", public: true },
-    {
-      id: t.string().primaryKey(),
-      sender: t.string(),
-      action: t.string(),
-      payload: t.string(),
-      timestamp: t.string(),
-    },
-  ),
-});
-
-const eventLogReducers = reducers(
-  reducerSchema("tx_event", {
-    action: t.string(),
-    payload: t.string(),
-  }),
-);
-
-const eventLogProcedures = procedures();
-
-const EVENT_LOG_REMOTE_MODULE = {
-  ...eventLogTables.schemaType,
-  ...eventLogReducers.reducersType,
-  ...eventLogProcedures,
-  versionInfo: { cliVersion: "2.0.0" },
-};
+const DEFAULT_SPACETIMEDB_URI = "ws://localhost:3001";
+const DEFAULT_SPACETIMEDB_NAME = "system_db";
 
 /**
  * Offline Sandbox SpacetimeDB Engine
- * Executes deterministic transactions in-memory and dispatches committed state
- * events to listeners via unidirectional data flow.
+ * Executes deterministic transactions in-memory with ISO-8601 UTC timestamps
+ * and dispatches committed state events to listeners via unidirectional data flow.
  */
 export class OfflineSandboxSpacetimeAdapter implements SpacetimeClientAdapter {
   readonly mode = "offline-sandbox" as const;
   private connected = true;
+  private currentIdentity: string | null = "sandbox_node_local";
+  private currentError: string | null = null;
   private connectionStateListeners = new Set<(connected: boolean) => void>();
+  private identityListeners = new Set<SpacetimeIdentityCallback>();
+  private errorListeners = new Set<SpacetimeErrorCallback>();
   private snapshotListeners = new Map<string, Set<SpacetimeSnapshotCallback<EventLogRecord>>>();
   private insertListeners = new Map<string, Set<SpacetimeEventCallback<EventLogRecord>>>();
   private updateListeners = new Map<string, Set<SpacetimeEventCallback<EventLogRecord>>>();
   private deleteListeners = new Map<string, Set<SpacetimeDeleteCallback>>();
 
+  readonly reducers: SpacetimeReducersClient = {
+    txEvent: (params) => this.executeTxEvent(params),
+  };
+
   get isConnected(): boolean {
     return this.connected;
+  }
+
+  get identity(): string | null {
+    return this.currentIdentity;
+  }
+
+  get lastError(): string | null {
+    return this.currentError;
+  }
+
+  setIdentity(identity: string): void {
+    this.currentIdentity = identity;
+    this.notifyIdentityChange();
   }
 
   onConnectionStateChange(cb: (connected: boolean) => void): () => void {
@@ -77,20 +68,52 @@ export class OfflineSandboxSpacetimeAdapter implements SpacetimeClientAdapter {
     };
   }
 
+  onIdentityChange(cb: SpacetimeIdentityCallback): () => void {
+    this.identityListeners.add(cb);
+    return () => {
+      this.identityListeners.delete(cb);
+    };
+  }
+
+  onErrorChange(cb: SpacetimeErrorCallback): () => void {
+    this.errorListeners.add(cb);
+    return () => {
+      this.errorListeners.delete(cb);
+    };
+  }
+
   private notifyConnectionState() {
     for (const cb of this.connectionStateListeners) {
       cb(this.connected);
     }
   }
 
+  private notifyIdentityChange() {
+    for (const cb of this.identityListeners) {
+      cb(this.currentIdentity);
+    }
+  }
+
+  private setError(error: string | null) {
+    this.currentError = error;
+    for (const cb of this.errorListeners) {
+      cb(this.currentError);
+    }
+  }
+
   async connect(): Promise<void> {
     this.connected = true;
+    this.currentIdentity = this.currentIdentity ?? "sandbox_node_local";
+    this.setError(null);
     this.notifyConnectionState();
+    this.notifyIdentityChange();
   }
 
   disconnect(): void {
     this.connected = false;
+    this.currentIdentity = null;
     this.notifyConnectionState();
+    this.notifyIdentityChange();
   }
 
   onSnapshot(tableName: string, callback: SpacetimeSnapshotCallback<EventLogRecord>): () => void {
@@ -165,16 +188,32 @@ export class OfflineSandboxSpacetimeAdapter implements SpacetimeClientAdapter {
     }
   }
 
-  async callReducer(params: TxReducerParams): Promise<SpacetimeTransactionResult> {
+  callReducer<K extends SpacetimeReducerName>(
+    name: K,
+    params: SpacetimeReducerParamsMap[K],
+  ): Promise<SpacetimeTransactionResult> {
+    return this.reducers[name](params);
+  }
+
+  private async executeTxEvent(params: TxReducerParams): Promise<SpacetimeTransactionResult> {
     const start = performance.now();
-    const txHash = `0x${Math.random().toString(16).substring(2, 10)}${Date.now().toString(16)}`;
+
+    if (!this.connected) {
+      const error = "Offline sandbox adapter is disconnected";
+      this.setError(error);
+      return {
+        status: "failed",
+        executionDurationMs: Math.round((performance.now() - start) * 100) / 100,
+        error,
+      };
+    }
 
     const newRecord: EventLogRecord = {
       id: `rec_${Math.random().toString(36).substring(2, 8)}`,
-      sender: "sandbox_node_local",
+      sender: this.currentIdentity ?? "sandbox_node_local",
       action: params.action,
       payload: params.payload,
-      timestamp: new Date().toLocaleTimeString(),
+      timestamp: new Date().toISOString(),
     };
 
     // Microtask async dispatch following real event loop
@@ -187,10 +226,10 @@ export class OfflineSandboxSpacetimeAdapter implements SpacetimeClientAdapter {
       }
     }
 
+    this.setError(null);
     const duration = Math.round((performance.now() - start) * 100) / 100;
     return {
       status: "committed",
-      txHash,
       executionDurationMs: duration,
     };
   }
@@ -211,23 +250,42 @@ function isEventLogRecord(value: unknown): value is EventLogRecord {
 /**
  * Live WebSocket SpacetimeDB Adapter
  * Connects to a running SpacetimeDB instance via SpacetimeDB SDK 2.15.x,
- * subscribes to `event_log`, and binds real `onInsert` / `onUpdate` / `onDelete` table streams.
+ * awaits real WebSocket handshake (`onConnect` / `onConnectError`), syncs server Identity,
+ * clears stale identity on disconnect, clears errors on automatic reconnect,
+ * subscribes to `event_log`, and exposes typed reducer methods.
  */
 export class LiveSpacetimeAdapter implements SpacetimeClientAdapter {
   readonly mode = "live" as const;
   private connected = false;
-  private connection: DbConnectionImpl<typeof EVENT_LOG_REMOTE_MODULE> | null = null;
+  private currentIdentity: string | null = null;
+  private currentError: string | null = null;
+  private connection: SpacetimeLiveConnectionLike | null = null;
   private unbindTableHandlers: (() => void) | null = null;
+  private abortPendingConnect: ((reason: Error) => void) | null = null;
   private connectionStateListeners = new Set<(connected: boolean) => void>();
+  private identityListeners = new Set<SpacetimeIdentityCallback>();
+  private errorListeners = new Set<SpacetimeErrorCallback>();
   private snapshotListeners = new Map<string, Set<SpacetimeSnapshotCallback<EventLogRecord>>>();
   private insertListeners = new Map<string, Set<SpacetimeEventCallback<EventLogRecord>>>();
   private updateListeners = new Map<string, Set<SpacetimeEventCallback<EventLogRecord>>>();
   private deleteListeners = new Map<string, Set<SpacetimeDeleteCallback>>();
 
+  readonly reducers: SpacetimeReducersClient = {
+    txEvent: (params) => this.executeLiveReducer("txEvent", params),
+  };
+
   constructor(private options?: SpacetimeConnectionOptions) {}
 
   get isConnected(): boolean {
     return this.connected;
+  }
+
+  get identity(): string | null {
+    return this.currentIdentity;
+  }
+
+  get lastError(): string | null {
+    return this.currentError;
   }
 
   onConnectionStateChange(cb: (connected: boolean) => void): () => void {
@@ -237,111 +295,212 @@ export class LiveSpacetimeAdapter implements SpacetimeClientAdapter {
     };
   }
 
+  onIdentityChange(cb: SpacetimeIdentityCallback): () => void {
+    this.identityListeners.add(cb);
+    return () => {
+      this.identityListeners.delete(cb);
+    };
+  }
+
+  onErrorChange(cb: SpacetimeErrorCallback): () => void {
+    this.errorListeners.add(cb);
+    return () => {
+      this.errorListeners.delete(cb);
+    };
+  }
+
   private notifyConnectionState() {
     for (const cb of this.connectionStateListeners) {
       cb(this.connected);
     }
   }
 
-  async connect(): Promise<void> {
+  private notifyIdentityChange() {
+    for (const cb of this.identityListeners) {
+      cb(this.currentIdentity);
+    }
+  }
+
+  private setError(error: string | null) {
+    this.currentError = error;
+    for (const cb of this.errorListeners) {
+      cb(this.currentError);
+    }
+  }
+
+  private bindTableSubscription(conn: SpacetimeLiveConnectionLike) {
+    // Tear down any previous table handlers before rebinding on reconnect
+    this.unbindTableHandlers?.();
+
+    const handleInsert = (_ctx: unknown, row: EventLogRecord) => {
+      const listeners = this.insertListeners.get("event_log");
+      if (listeners) {
+        for (const listener of listeners) {
+          listener(row);
+        }
+      }
+    };
+
+    const handleUpdate = (_ctx: unknown, _oldRow: EventLogRecord, newRow: EventLogRecord) => {
+      const listeners = this.updateListeners.get("event_log");
+      if (listeners) {
+        for (const listener of listeners) {
+          listener(newRow);
+        }
+      }
+    };
+
+    const handleDelete = (_ctx: unknown, row: EventLogRecord) => {
+      const listeners = this.deleteListeners.get("event_log");
+      if (listeners) {
+        for (const listener of listeners) {
+          listener(row.id);
+        }
+      }
+    };
+
+    // 1. Bind incremental real-time table event callbacks
+    conn.db.event_log.onInsert(handleInsert);
+    conn.db.event_log.onUpdate(handleUpdate);
+    conn.db.event_log.onDelete(handleDelete);
+
+    // 2. Subscribe to event_log table and hydrate initial snapshot on apply
+    const subscription = conn
+      .subscriptionBuilder()
+      .onApplied((ctx) => {
+        const initialRows: EventLogRecord[] = [];
+        for (const row of ctx.db.event_log.iter()) {
+          if (isEventLogRecord(row)) {
+            initialRows.push(row);
+          }
+        }
+        const listeners = this.snapshotListeners.get("event_log");
+        if (listeners && initialRows.length > 0) {
+          for (const listener of listeners) {
+            listener(initialRows);
+          }
+        }
+      })
+      .subscribe(["SELECT * FROM event_log"]);
+
+    this.unbindTableHandlers = () => {
+      conn.db.event_log.removeOnInsert(handleInsert);
+      conn.db.event_log.removeOnUpdate(handleUpdate);
+      conn.db.event_log.removeOnDelete(handleDelete);
+      if (!subscription.isEnded()) {
+        subscription.unsubscribe();
+      }
+    };
+  }
+
+  private createDefaultBuilder(): SpacetimeLiveConnectionBuilderLike {
+    return new DbConnectionBuilder(
+      SPACETIME_REMOTE_MODULE,
+      (config) => new DbConnectionImpl(config),
+    ) as unknown as SpacetimeLiveConnectionBuilderLike;
+  }
+
+  connect(): Promise<void> {
+    if (this.connection) {
+      this.disconnect();
+    }
+
     const uri =
       this.options?.uri ||
       (typeof import.meta !== "undefined" && import.meta.env?.VITE_SPACETIMEDB_URI) ||
-      "ws://localhost:3000";
+      DEFAULT_SPACETIMEDB_URI;
     const databaseName =
       this.options?.databaseName ||
       (typeof import.meta !== "undefined" && import.meta.env?.VITE_SPACETIMEDB_NAME) ||
-      "system_db";
+      DEFAULT_SPACETIMEDB_NAME;
 
-    const builder = new DbConnectionBuilder(
-      EVENT_LOG_REMOTE_MODULE,
-      (config) => new DbConnectionImpl(config),
-    )
-      .withUri(uri)
-      .withDatabaseName(databaseName)
-      .withAutomaticReconnect();
+    return new Promise<void>((resolveConnect, rejectConnect) => {
+      let settled = false;
 
-    if (this.options?.token) {
-      builder.withToken(this.options.token);
-    }
-
-    builder.onConnect((conn) => {
-      this.connected = true;
-      this.notifyConnectionState();
-
-      // Tear down any previous table handlers before rebinding on reconnect
-      this.unbindTableHandlers?.();
-
-      const handleInsert = (_ctx: unknown, row: EventLogRecord) => {
-        const listeners = this.insertListeners.get("event_log");
-        if (listeners) {
-          for (const listener of listeners) {
-            listener(row);
-          }
+      const finishResolve = () => {
+        if (!settled) {
+          settled = true;
+          this.abortPendingConnect = null;
+          resolveConnect();
         }
       };
 
-      const handleUpdate = (_ctx: unknown, _oldRow: EventLogRecord, newRow: EventLogRecord) => {
-        const listeners = this.updateListeners.get("event_log");
-        if (listeners) {
-          for (const listener of listeners) {
-            listener(newRow);
-          }
+      const finishReject = (err: Error) => {
+        if (!settled) {
+          settled = true;
+          this.abortPendingConnect = null;
+          rejectConnect(err);
         }
       };
 
-      const handleDelete = (_ctx: unknown, row: EventLogRecord) => {
-        const listeners = this.deleteListeners.get("event_log");
-        if (listeners) {
-          for (const listener of listeners) {
-            listener(row.id);
-          }
+      this.abortPendingConnect = finishReject;
+
+      const builder = (
+        this.options?.createBuilder ? this.options.createBuilder() : this.createDefaultBuilder()
+      )
+        .withUri(uri)
+        .withDatabaseName(databaseName)
+        .withAutomaticReconnect();
+
+      if (this.options?.token) {
+        builder.withToken(this.options.token);
+      }
+
+      builder.onConnect((conn, identity) => {
+        this.connected = true;
+        this.currentIdentity = identity.toHexString();
+        this.setError(null);
+        this.notifyConnectionState();
+        this.notifyIdentityChange();
+        this.bindTableSubscription(conn);
+        finishResolve();
+      });
+
+      builder.onAutomaticReconnect((conn, identity) => {
+        this.connected = true;
+        this.currentIdentity = identity.toHexString();
+        this.setError(null);
+        this.notifyConnectionState();
+        this.notifyIdentityChange();
+        this.bindTableSubscription(conn);
+      });
+
+      builder.onConnectError((_ctx, error) => {
+        this.connected = false;
+        this.currentIdentity = null;
+        this.setError(error.message);
+        this.notifyConnectionState();
+        this.notifyIdentityChange();
+        finishReject(error);
+      });
+
+      builder.onDisconnect((_ctx, error) => {
+        this.connected = false;
+        this.currentIdentity = null;
+        if (error) {
+          this.setError(error.message);
         }
-      };
+        this.notifyConnectionState();
+        this.notifyIdentityChange();
+        finishReject(error ?? new Error("SpacetimeDB disconnected before handshake completed"));
+      });
 
-      // 1. Bind incremental real-time table event callbacks
-      conn.db.event_log.onInsert(handleInsert);
-      conn.db.event_log.onUpdate(handleUpdate);
-      conn.db.event_log.onDelete(handleDelete);
-
-      // 2. Subscribe to event_log table and hydrate initial snapshot on apply
-      const subscription = conn
-        .subscriptionBuilder()
-        .onApplied((ctx) => {
-          const initialRows: EventLogRecord[] = [];
-          for (const row of ctx.db.event_log.iter()) {
-            if (isEventLogRecord(row)) {
-              initialRows.push(row);
-            }
-          }
-          const listeners = this.snapshotListeners.get("event_log");
-          if (listeners && initialRows.length > 0) {
-            for (const listener of listeners) {
-              listener(initialRows);
-            }
-          }
-        })
-        .subscribe(["SELECT * FROM event_log"]);
-
-      this.unbindTableHandlers = () => {
-        conn.db.event_log.removeOnInsert(handleInsert);
-        conn.db.event_log.removeOnUpdate(handleUpdate);
-        conn.db.event_log.removeOnDelete(handleDelete);
-        if (!subscription.isEnded()) {
-          subscription.unsubscribe();
-        }
-      };
+      try {
+        this.connection = builder.build();
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        this.connected = false;
+        this.currentIdentity = null;
+        this.setError(error.message);
+        this.notifyConnectionState();
+        this.notifyIdentityChange();
+        finishReject(error);
+      }
     });
-
-    builder.onDisconnect(() => {
-      this.connected = false;
-      this.notifyConnectionState();
-    });
-
-    this.connection = builder.build();
   }
 
   disconnect(): void {
+    this.abortPendingConnect?.(new Error("SpacetimeDB connection aborted by disconnect"));
     this.unbindTableHandlers?.();
     this.unbindTableHandlers = null;
     if (this.connection) {
@@ -349,7 +508,9 @@ export class LiveSpacetimeAdapter implements SpacetimeClientAdapter {
       this.connection = null;
     }
     this.connected = false;
+    this.currentIdentity = null;
     this.notifyConnectionState();
+    this.notifyIdentityChange();
   }
 
   onSnapshot(tableName: string, callback: SpacetimeSnapshotCallback<EventLogRecord>): () => void {
@@ -400,33 +561,43 @@ export class LiveSpacetimeAdapter implements SpacetimeClientAdapter {
     };
   }
 
-  async callReducer(params: TxReducerParams): Promise<SpacetimeTransactionResult> {
+  callReducer<K extends SpacetimeReducerName>(
+    name: K,
+    params: SpacetimeReducerParamsMap[K],
+  ): Promise<SpacetimeTransactionResult> {
+    return this.reducers[name](params);
+  }
+
+  private async executeLiveReducer<K extends SpacetimeReducerName>(
+    name: K,
+    params: SpacetimeReducerParamsMap[K],
+  ): Promise<SpacetimeTransactionResult> {
     const start = performance.now();
-    const txHash = `0x${Math.random().toString(16).substring(2, 10)}${Date.now().toString(16)}`;
 
     if (!this.connection || !this.connected) {
+      const error = "SpacetimeDB live connection is not active";
+      this.setError(error);
       return {
         status: "failed",
-        txHash,
         executionDurationMs: Math.round((performance.now() - start) * 100) / 100,
+        error,
       };
     }
 
     try {
-      await this.connection.reducers.txEvent({
-        action: params.action,
-        payload: params.payload,
-      });
+      await this.connection.reducers[name](params);
+      this.setError(null);
       return {
         status: "committed",
-        txHash,
         executionDurationMs: Math.round((performance.now() - start) * 100) / 100,
       };
-    } catch {
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      this.setError(error);
       return {
         status: "failed",
-        txHash,
         executionDurationMs: Math.round((performance.now() - start) * 100) / 100,
+        error,
       };
     }
   }

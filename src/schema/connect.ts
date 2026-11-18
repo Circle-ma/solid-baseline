@@ -1,6 +1,7 @@
-import type { Transport } from "@connectrpc/connect";
+import type { DescService } from "@bufbuild/protobuf";
+import type { Client, Transport } from "@connectrpc/connect";
 import type { Accessor } from "solid-js";
-import type { HealthCheckRequest, HealthCheckResponse } from "../gen/system/v1/system_pb";
+import type { HealthCheckResponse } from "../gen/system/v1/system_pb";
 
 /**
  * ConnectRPC Schema (SSOT via Protobuf and buf generate)
@@ -43,18 +44,45 @@ export interface HealthCheckQueryResult {
 
 /**
  * Single-Responsibility RPC Provider Props
+ * Service-agnostic root provider supplying an isolated transport and client cache.
  */
-export interface RpcProviderProps extends TransportProviderProps {
-  /** Optional initial request to trigger an eager declarative query on mount. */
-  initialHealthRequest?: Partial<HealthCheckRequest>;
+export type RpcProviderProps = TransportProviderProps;
+
+/**
+ * Extensible RPC Context Contract
+ * Supplies the request/tree-scoped Transport and lazy per-service typed client factory
+ * so routes and components can create declarative queries on demand.
+ */
+export interface RpcContextValue {
+  readonly transport: Transport;
+  getClient<T extends DescService>(service: T): Client<T>;
 }
 
 /**
- * Single-Responsibility RPC Context Contract
- * Exposes declarative Solid 2.0 async `createMemo` queries and refresh triggers.
- * Pending and error states are observed natively via `isPending()` and `<AsyncBoundary>`.
+ * Configuration for route/component-scoped declarative Solid 2.0 RPC queries.
  */
-export interface RpcContextValue {
-  healthQuery: Accessor<HealthCheckQueryResult | null>;
-  refreshHealth: (request?: Partial<HealthCheckRequest>) => Promise<HealthCheckQueryResult | null>;
+export interface RpcQueryOptions<TParams, TData> {
+  /** Diagnostic attribution name for `@solidjs/diagnostics`. */
+  name: string;
+  fetcher: (params: TParams) => Promise<TData>;
+  initialParams?: TParams | null;
+}
+
+/**
+ * Conditional execute signature:
+ * - When `undefined extends TParams`, `execute()` may be called without arguments.
+ * - Otherwise, `execute(params)` requires an explicit argument (use `refresh()` to re-run with previous params).
+ */
+export type RpcQueryExecuteFn<TParams, TData> = undefined extends TParams
+  ? (params?: TParams) => Promise<TData | null>
+  : (params: TParams) => Promise<TData | null>;
+
+/**
+ * Return contract for declarative Solid 2.0 RPC queries.
+ */
+export interface RpcQueryHandle<TParams, TData> {
+  data: Accessor<TData | null>;
+  isPending: Accessor<boolean>;
+  execute: RpcQueryExecuteFn<TParams, TData>;
+  refresh: () => Promise<TData | null>;
 }

@@ -1,4 +1,5 @@
 import { createRouter, defineRoute, defineRoutes } from "@solidjs/router";
+import { lazy } from "solid-js";
 import "./index.css";
 import {
   AsyncBoundary,
@@ -13,9 +14,10 @@ import {
   ThemeToggle,
   VStack,
 } from "~/components/ui";
-import { RpcProvider, SpacetimeProvider } from "~/lib";
+import { RpcProvider } from "~/lib/rpc-provider";
 import Overview from "~/routes/overview";
-import Realtime from "~/routes/realtime";
+
+const Realtime = lazy(() => import("~/routes/realtime"));
 
 export const routes = defineRoutes([
   defineRoute({
@@ -28,9 +30,7 @@ export const routes = defineRoutes([
   }),
 ]);
 
-export function createAppRouter() {
-  return createRouter({ routes });
-}
+export const router = createRouter({ routes });
 
 function NavigationBar() {
   return (
@@ -41,15 +41,15 @@ function NavigationBar() {
       alignItems="center"
       p="1"
       bg="bg.subtle"
-      borderRadius="md"
+      borderRadius="l2"
       borderWidth="1px"
       borderColor="border.subtle"
     >
       <HStack gap="1" alignItems="center">
-        <NavLink href="/" end>
+        <NavLink href={router.paths()} end>
           Overview & Primitives
         </NavLink>
-        <NavLink href="/realtime">Realtime & Telemetry</NavLink>
+        <NavLink href={router.paths.realtime()}>Realtime & Telemetry</NavLink>
       </HStack>
       <Divider orientation="vertical" h="4" borderColor="border.subtle" />
       <ThemeToggle />
@@ -58,7 +58,7 @@ function NavigationBar() {
 }
 
 export default function App() {
-  const Router = createAppRouter();
+  const Router = router;
   return (
     <Router>
       {(props) => (
@@ -90,13 +90,11 @@ export default function App() {
 
               <Divider borderColor="border.subtle" />
 
-              {/* Routed Page View inside SSR-Isolated Single-Responsibility Providers & Async Boundary */}
+              {/* Routed Page View inside Service-Agnostic RPC Provider & Async Boundary */}
               <Box as="main">
-                <SpacetimeProvider>
-                  <RpcProvider>
-                    <AsyncBoundary>{props.children}</AsyncBoundary>
-                  </RpcProvider>
-                </SpacetimeProvider>
+                <RpcProvider>
+                  <AsyncBoundary>{props.children}</AsyncBoundary>
+                </RpcProvider>
               </Box>
 
               <Divider borderColor="border.subtle" />
