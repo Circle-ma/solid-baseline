@@ -385,18 +385,18 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
     }
 
     // 9. In src/routes/ and src/lib/, enforce SSOT schema governance for entities & RPC contracts
-    // Route-local non-exported *Props / *View / *ViewModel types are permitted in src/routes/.
+    // Route-local non-exported *Props / *View / *ViewModel / *State UI types are permitted in src/routes/**.
     if (isRoute || isLib) {
       if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
         const hasExport = node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
         const isLocalRouteUiType =
-          isRoute && !hasExport && /(?:View|ViewModel|Props)$/.test(node.name.text);
+          isRoute && !hasExport && /(?:View|ViewModel|Props|State)$/.test(node.name.text);
         if (!isLocalRouteUiType) {
           const kindLabel = ts.isInterfaceDeclaration(node) ? "interface" : "type alias";
           addViolation(
             node,
             "UNSCOPED_TYPE_DEFINITION",
-            `Ad-hoc ${kindLabel} "${node.name.text}" in ${relPath} is forbidden. Database entities, RPC contracts, and shared context types must be declared in src/schema/ (non-exported *Props / *View / *ViewModel types are allowed in src/routes/).`,
+            `Ad-hoc ${kindLabel} "${node.name.text}" in ${relPath} is forbidden. Database entities, RPC contracts, and shared context types must be declared in src/schema/ (non-exported *Props / *View / *ViewModel / *State UI types are allowed in src/routes/).`,
           );
         }
       }
@@ -536,6 +536,33 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
+    // 15. Forbid legacy single-argument createEffect(fn) to prevent hitting the Ark UI 5.x compatibility bridge
+    if (ts.isCallExpression(node)) {
+      const fnName = node.expression.getText(sourceFile);
+      if (fnName === "createEffect") {
+        const secondArg = node.arguments[1];
+        const isOptionsOnlySecondArg =
+          secondArg !== undefined &&
+          ts.isObjectLiteralExpression(secondArg) &&
+          !secondArg.properties.some((prop) => {
+            if (ts.isPropertyAssignment(prop) || ts.isMethodDeclaration(prop)) {
+              return prop.name.getText(sourceFile).replace(/['"]/g, "") === "effect";
+            }
+            if (ts.isShorthandPropertyAssignment(prop)) {
+              return prop.name.text === "effect";
+            }
+            return false;
+          });
+        if (node.arguments.length < 2 || isOptionsOnlySecondArg) {
+          addViolation(
+            node,
+            "SINGLE_ARG_CREATE_EFFECT_BANNED",
+            "Single-argument createEffect(fn) is forbidden in application code to avoid triggering the temporary Ark UI 5.x compatibility bridge. Always use Solid 2.0 split createEffect(compute, apply) or onSettled().",
+          );
+        }
+      }
+    }
+
     ts.forEachChild(node, visitor);
   }
 
@@ -567,7 +594,7 @@ if (violations.length > 0) {
   process.exit(1);
 } else {
   console.log(
-    "✅ [ARCHITECTURAL RAILS VERIFIED] All 14 architectural invariants strictly verified across src/ via TypeScript AST & TypeChecker.\n",
+    "✅ [ARCHITECTURAL RAILS VERIFIED] All 15 architectural invariants strictly verified across src/ via TypeScript AST & TypeChecker.\n",
   );
   process.exit(0);
 }
