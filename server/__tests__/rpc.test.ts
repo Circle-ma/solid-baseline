@@ -3,7 +3,12 @@ import { Code, ConnectError, createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { describe, expect, it } from "vitest";
 import { HealthCheckStatus, SystemService } from "../../src/schema/connect";
-import { createRpcHandler, type RequestLogEntry } from "../index";
+import {
+  createRpcHandler,
+  gracefulShutdown,
+  type RequestLogEntry,
+  type StoppableServer,
+} from "../index";
 
 describe("ConnectRPC Server createRpcHandler()", () => {
   it("responds to GET /healthz with ok JSON and omits wildcard CORS headers by default", async () => {
@@ -18,6 +23,22 @@ describe("ConnectRPC Server createRpcHandler()", () => {
     expect(body.status).toBe("ok");
     expect(typeof body.uptime).toBe("number");
     expect(body.uptime).toBeGreaterThanOrEqual(0);
+  });
+
+  it("responds to GET /readyz with 200 when ready and 503 when draining", async () => {
+    let ready = true;
+    const handler = createRpcHandler({ logger: false, isReady: () => ready });
+
+    const readyRes = await handler(new Request("http://localhost:8080/readyz", { method: "GET" }));
+    expect(readyRes.status).toBe(200);
+    expect((await readyRes.json()) as { status: string }).toMatchObject({ status: "ready" });
+
+    ready = false;
+    const drainingRes = await handler(
+      new Request("http://localhost:8080/readyz", { method: "GET" }),
+    );
+    expect(drainingRes.status).toBe(503);
+    expect((await drainingRes.json()) as { status: string }).toMatchObject({ status: "draining" });
   });
 
   it("handles POST /system.v1.SystemService/CheckHealth over Connect JSON protocol", async () => {
@@ -77,6 +98,56 @@ describe("ConnectRPC Server createRpcHandler()", () => {
     } satisfies Partial<ConnectError>);
   });
 
+  it("rejects oversized request bodies (Content-Length and streamed) with 413 and malformed JSON with 400", async () => {
+    const handler = createRpcHandler({ logger: false, maxBodyBytes: 64 });
+
+    // 1. Content-Length header exceeds limit
+    const headerTooLarge = await handler(
+      new Request("http://localhost:8080/system.v1.SystemService/CheckHealth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Connect-Protocol-Version": "1",
+          "Content-Length": "1024",
+        },
+        body: JSON.stringify({ service: "a".repeat(200) }),
+      }),
+    );
+    expect(headerTooLarge.status).toBe(413);
+
+    // 2. Streamed body without Content-Length exceeds limit
+    const bigStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(JSON.stringify({ service: "x".repeat(120) })));
+        controller.close();
+      },
+    });
+    const streamTooLarge = await handler(
+      new Request("http://localhost:8080/system.v1.SystemService/CheckHealth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Connect-Protocol-Version": "1",
+        },
+        body: bigStream,
+      }),
+    );
+    expect(streamTooLarge.status).toBe(413);
+
+    // 3. Malformed JSON payload returns ConnectRPC InvalidArgument (HTTP 400)
+    const badJson = await handler(
+      new Request("http://localhost:8080/system.v1.SystemService/CheckHealth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Connect-Protocol-Version": "1",
+        },
+        body: "{not-valid-json",
+      }),
+    );
+    expect(badJson.status).toBe(400);
+  });
+
   it("applies configured CORS_ORIGIN headers and handles OPTIONS preflight", async () => {
     const handler = createRpcHandler({ corsOrigin: "http://localhost:3000", logger: false });
 
@@ -132,5 +203,43 @@ describe("ConnectRPC Server createRpcHandler()", () => {
       status: 404,
     });
     expect(typeof logs[0].durationMs).toBe("number");
+  });
+
+  it("executes two-stage gracefulShutdown: drains cleanly via stop(false), escalates to stop(true) on timeout", async () => {
+    const cleanCalls: Array<boolean | undefined> = [];
+    const cleanServer: StoppableServer = {
+      async stop(closeActive) {
+        cleanCalls.push(closeActive);
+      },
+    };
+    const cleanOutcome = await gracefulShutdown(cleanServer, {
+      signal: "SIGTERM",
+      timeoutMs: 100,
+      logger: false,
+    });
+    expect(cleanOutcome).toEqual({ forced: false });
+    expect(cleanCalls).toEqual([false]);
+
+    const stuckCalls: Array<boolean | undefined> = [];
+    let releaseStuckDrain: (() => void) | null = null;
+    const stuckServer: StoppableServer = {
+      stop(closeActive) {
+        stuckCalls.push(closeActive);
+        if (!closeActive) {
+          return new Promise<void>((resolveDrain) => {
+            releaseStuckDrain = resolveDrain;
+          });
+        }
+        releaseStuckDrain?.();
+        return Promise.resolve();
+      },
+    };
+    const forcedOutcome = await gracefulShutdown(stuckServer, {
+      signal: "SIGINT",
+      timeoutMs: 20,
+      logger: false,
+    });
+    expect(forcedOutcome).toEqual({ forced: true });
+    expect(stuckCalls).toEqual([false, true]);
   });
 });

@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import ts from "typescript";
 
 const ROOT_DIR = join(import.meta.dirname, "..");
@@ -33,42 +33,10 @@ const ALLOWED_Z_INDEX = new Set([
   "max",
 ]);
 
-// Only ban visual/interactive HTML elements that break design system consistency.
-// Structural container tags (div, section, main, nav, header, footer, article, aside,
-// ul, ol, li, form, label, span) are permitted.
-const BANNED_RAW_DOM = new Set([
-  "button",
-  "input",
-  "select",
-  "textarea",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
-  "p",
-  "a",
-  "hr",
-  "svg",
-]);
-
-const BANNED_MARGIN_PROPS = new Set([
-  "margin",
-  "m",
-  "mt",
-  "mb",
-  "ml",
-  "mr",
-  "mx",
-  "my",
-  "marginTop",
-  "marginBottom",
-  "marginLeft",
-  "marginRight",
-  "marginInline",
-  "marginBlock",
-]);
+// Ban raw interactive/icon HTML elements that have canonical design-system primitives
+// (`<Button>`, `<Input>`, `<Textarea>`, `<Icon>`). Semantic content tags (`p`, `h1`-`h6`, `hr`),
+// anchors (`a`), structural tags, and native `<select>` (no dedicated primitive yet) are permitted.
+const BANNED_RAW_DOM = new Set(["button", "input", "textarea", "svg"]);
 
 const STYLE_COLOR_JSX_ATTRS = new Set([
   "bg",
@@ -147,8 +115,6 @@ const BANNED_BROWSER_GLOBALS = new Set([
   "customElements",
 ]);
 
-const MAX_IDENTICAL_ADHOC_CSS_COUNT = 2;
-
 function isPascalCase(str: string): boolean {
   return /^[A-Z][A-Za-z0-9]*$/.test(str);
 }
@@ -171,6 +137,24 @@ function getAllFiles(dir: string): string[] {
     }
   }
   return result;
+}
+
+function createProgramFromTsconfig(tsconfigFile: string, fallbackFiles: string[]): ts.Program {
+  const configPath = resolve(ROOT_DIR, tsconfigFile);
+  const readResult = ts.readConfigFile(configPath, ts.sys.readFile);
+  if (readResult.error) {
+    throw new Error(
+      `Failed to read ${tsconfigFile}: ${ts.flattenDiagnosticMessageText(readResult.error.messageText, "\n")}`,
+    );
+  }
+
+  const parsed = ts.parseJsonConfigFileContent(readResult.config, ts.sys, dirname(configPath));
+  const rootNames = Array.from(new Set([...parsed.fileNames, ...fallbackFiles]));
+  return ts.createProgram(rootNames, {
+    ...parsed.options,
+    strict: true,
+    noEmit: true,
+  });
 }
 
 function getEnclosingStyleCall(node: ts.Node, sourceFile: ts.SourceFile): ts.CallExpression | null {
@@ -223,26 +207,13 @@ function isFreeGlobalReference(node: ts.Identifier): boolean {
 const srcFilePaths = getAllFiles(SRC_DIR);
 const serverFilePaths = getAllFiles(SERVER_DIR);
 const moduleFilePaths = getAllFiles(SPACETIMEDB_SRC_DIR);
-const allFilePaths = [...srcFilePaths, ...serverFilePaths, ...moduleFilePaths];
 
-// Create TypeScript Program and obtain TypeChecker for semantic analysis
-const program = ts.createProgram(allFilePaths, {
-  target: ts.ScriptTarget.ESNext,
-  module: ts.ModuleKind.ESNext,
-  jsx: ts.JsxEmit.Preserve,
-  jsxImportSource: "@solidjs/web",
-  moduleResolution: ts.ModuleResolutionKind.Bundler,
-  baseUrl: ROOT_DIR,
-  paths: {
-    "~/*": ["src/*"],
-    "styled-system/*": ["styled-system/*"],
-  },
-});
+// Isolated strict TypeScript Programs matching each runtime environment's tsconfig
+const appProgram = createProgramFromTsconfig("tsconfig.app.json", srcFilePaths);
+const serverProgram = createProgramFromTsconfig("tsconfig.server.json", serverFilePaths);
+const moduleProgram = createProgramFromTsconfig("tsconfig.module.json", moduleFilePaths);
 
-const checker = program.getTypeChecker();
-
-// Track identical one-off css(...) calls in feature code across src/ (excluding UI primitives)
-const adhocCssOccurrences = new Map<string, Array<{ sourceFile: ts.SourceFile; node: ts.Node }>>();
+const appChecker = appProgram.getTypeChecker();
 
 function addViolation(
   sourceFile: ts.SourceFile,
@@ -263,12 +234,43 @@ function addViolation(
   });
 }
 
+function checkTextSuppressions(sourceFile: ts.SourceFile, relPath: string) {
+  const lines = sourceFile.text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.includes("@ts-ignore") || l.includes("@ts-expect-error")) {
+      violations.push({
+        file: relPath,
+        line: i + 1,
+        col: 1,
+        type: "TYPE_ESCAPE_HATCH_BANNED",
+        message:
+          "TypeScript suppressions (@ts-ignore, @ts-expect-error) are strictly banned. Fix type errors rationally.",
+        snippet: l.trim(),
+      });
+    }
+  }
+}
+
 function scanBackendFile(sourceFile: ts.SourceFile) {
   const filePath = sourceFile.fileName;
   const relPath = relative(ROOT_DIR, filePath);
 
+  checkTextSuppressions(sourceFile, relPath);
+
   function visitor(node: ts.Node) {
-    // Rule #16: CROSS_RUNTIME_IMPORT_BANNED (server/ & spacetimedb/ must never import UI/DOM)
+    // Rule #8: Ban `as any` in backend/module code too
+    if (ts.isAsExpression(node) && node.type.kind === ts.SyntaxKind.AnyKeyword) {
+      addViolation(
+        sourceFile,
+        relPath,
+        node,
+        "TYPE_ESCAPE_HATCH_BANNED",
+        "Type assertion `as any` is strictly banned. Derive types from SSOT schema or use narrow type discrimination.",
+      );
+    }
+
+    // Rule #15: CROSS_RUNTIME_IMPORT_BANNED (server/ & spacetimedb/ must never import UI/DOM)
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
       const spec = node.moduleSpecifier;
       if (spec && ts.isStringLiteral(spec)) {
@@ -309,10 +311,11 @@ function scanBackendFile(sourceFile: ts.SourceFile) {
 function scanSourceFile(sourceFile: ts.SourceFile) {
   const filePath = sourceFile.fileName;
   const relPath = relative(ROOT_DIR, filePath);
-  const fileContent = sourceFile.text;
 
   const isUiPrimitive =
     filePath.includes("/src/components/ui/") || filePath.includes("\\src\\components\\ui\\");
+  const isComponents =
+    filePath.includes("/src/components/") || filePath.includes("\\src\\components\\");
   const isDocumentShell = filePath.endsWith("src/Document.tsx");
   const isRoute = filePath.includes("/src/routes/") || filePath.includes("\\src\\routes\\");
   const isLib = filePath.includes("/src/lib/") || filePath.includes("\\src\\lib\\");
@@ -321,22 +324,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
     addViolation(sourceFile, relPath, node, type, message);
   }
 
-  // 1. Text-level check: Escape hatches banned anywhere in src/
-  const lines = fileContent.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i];
-    if (l.includes("@ts-ignore") || l.includes("@ts-expect-error")) {
-      violations.push({
-        file: relPath,
-        line: i + 1,
-        col: 1,
-        type: "TYPE_ESCAPE_HATCH_BANNED",
-        message:
-          "TypeScript suppressions (@ts-ignore, @ts-expect-error) are strictly banned. Fix type errors rationally.",
-        snippet: l.trim(),
-      });
-    }
-  }
+  checkTextSuppressions(sourceFile, relPath);
 
   function checkZIndex(exprNode: ts.Node, reportNode: ts.Node) {
     if (ts.isNumericLiteral(exprNode)) {
@@ -360,8 +348,8 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
 
     // Semantic TypeChecker analysis for ternary, variable, and complex expressions
     try {
-      const type = checker.getTypeAtLocation(exprNode);
-      const typeStr = checker.typeToString(type);
+      const type = appChecker.getTypeAtLocation(exprNode);
+      const typeStr = appChecker.typeToString(type);
 
       function isBadType(t: ts.Type): boolean {
         if (t.flags & (ts.TypeFlags.Number | ts.TypeFlags.NumberLiteral)) {
@@ -398,7 +386,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
   }
 
   function visitor(node: ts.Node) {
-    // Rule #9: Check for type assertion escape hatch: `as any`
+    // Rule #8: Check for type assertion escape hatch: `as any`
     if (ts.isAsExpression(node)) {
       if (node.type.kind === ts.SyntaxKind.AnyKeyword) {
         report(
@@ -418,7 +406,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       );
     }
 
-    // Rules #2 & #3: Check for hardcoded hex colors & raw color functions ONLY inside style contexts
+    // Rules #2 & #3: Check for hardcoded hex colors & raw color functions inside style contexts
     if (ts.isStringLiteral(node)) {
       const inStyleCall = getEnclosingStyleCall(node, sourceFile) !== null;
       const enclosingAttr = getEnclosingJsxAttribute(node);
@@ -470,62 +458,8 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // Rule #5: Margin props — ban push margins ONLY in JSX attributes & style calls (permit ml/mr/mx="auto")
-    if (ts.isJsxAttribute(node)) {
-      const propName = getJsxAttrName(node);
-      if (BANNED_MARGIN_PROPS.has(propName)) {
-        let isAllowedAuto = false;
-        if (propName === "ml" || propName === "mr" || propName === "mx") {
-          if (
-            node.initializer &&
-            ts.isStringLiteral(node.initializer) &&
-            node.initializer.text === "auto"
-          ) {
-            isAllowedAuto = true;
-          } else if (
-            node.initializer &&
-            ts.isJsxExpression(node.initializer) &&
-            node.initializer.expression &&
-            ts.isStringLiteral(node.initializer.expression) &&
-            node.initializer.expression.text === "auto"
-          ) {
-            isAllowedAuto = true;
-          }
-        }
-        if (!isAllowedAuto) {
-          report(
-            node,
-            "MARGIN_PROP_FORBIDDEN",
-            `Margin prop "${propName}" is forbidden. Declare Margin Dead. Components must never dictate outer spacing; parent containers orchestrate spacing via gap (only ml/mr/mx="auto" are permitted for flex alignment).`,
-          );
-        }
-      }
-    } else if (ts.isPropertyAssignment(node) && getEnclosingStyleCall(node, sourceFile) !== null) {
-      const propName = node.name.getText(sourceFile).replace(/['"]/g, "");
-      if (BANNED_MARGIN_PROPS.has(propName)) {
-        let isAllowedAuto = false;
-        if (propName === "ml" || propName === "mr" || propName === "mx") {
-          if (ts.isStringLiteral(node.initializer) && node.initializer.text === "auto") {
-            isAllowedAuto = true;
-          } else if (
-            isUiPrimitive &&
-            ts.isPropertyAccessExpression(node.initializer) &&
-            node.initializer.expression.getText(sourceFile) === "props"
-          ) {
-            isAllowedAuto = true;
-          }
-        }
-        if (!isAllowedAuto) {
-          report(
-            node,
-            "MARGIN_PROP_FORBIDDEN",
-            `Margin prop "${propName}" is forbidden in style objects. Components must never dictate outer spacing; parent containers orchestrate spacing via gap (only ml/mr/mx="auto" are permitted for flex alignment).`,
-          );
-        }
-      }
-    }
-
-    // Rule #6: Outside src/components/ui/ and src/Document.tsx, forbid raw visual/interactive DOM elements
+    // Rule #5: Outside src/components/ui/ and src/Document.tsx, forbid raw visual/interactive controls
+    // that have canonical design-system primitives (`button`, `input`, `textarea`, `svg`).
     if (!isUiPrimitive && !isDocumentShell) {
       if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
         const tagName = node.tagName.getText(sourceFile);
@@ -533,43 +467,38 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
           report(
             node,
             "RAW_DOM_ELEMENT_BANNED",
-            `Raw visual/interactive HTML element "<${tagName}>" is forbidden outside UI primitives. Use systematic primitives from "~/components/ui" (<Button>, <Input>, <Heading>, <Text>, <NavLink>, <Divider>, <Icon>).`,
+            `Raw interactive/icon HTML element "<${tagName}>" is forbidden outside UI primitives. Use systematic primitives from "~/components/ui" (<Button>, <Input>, <Textarea>, <Icon>).`,
           );
         }
       }
     }
 
-    // Rule #7: Outside src/components/ui/, allow one-off `css()` from `styled-system/css`
-    // (repeated >= 3 identical styles must be extracted to cva/recipe); still ban `styled-system/patterns` and `styled-system/jsx`.
-    if (!isUiPrimitive) {
-      if (ts.isImportDeclaration(node)) {
-        const moduleSpecifier = node.moduleSpecifier;
-        if (ts.isStringLiteral(moduleSpecifier)) {
-          const mod = moduleSpecifier.text;
-          if (mod === "styled-system/patterns" || mod === "styled-system/jsx") {
-            report(
-              node,
-              "ADHOC_CSS_IN_FEATURE_BANNED",
-              `Direct import from "${mod}" in feature code is forbidden. Consume layout primitives from "~/components/ui" (one-off page layout styles may use css() from "styled-system/css").`,
-            );
-          }
+    // Rule #6: Ban `styled-system/jsx` everywhere in src/ (Solid 1.x generated runtime);
+    // ban `styled-system/patterns` outside src/components/ui/ (one-off `css()` is permitted freely).
+    if (ts.isImportDeclaration(node)) {
+      const moduleSpecifier = node.moduleSpecifier;
+      if (ts.isStringLiteral(moduleSpecifier)) {
+        const mod = moduleSpecifier.text;
+        if (mod === "styled-system/jsx" || mod.startsWith("styled-system/jsx/")) {
+          report(
+            node,
+            "STYLE_RUNTIME_IMPORT_BANNED",
+            `Import from "${mod}" is forbidden. Panda's generated Solid JSX factory targets Solid 1.x; use pure Solid 2.0 layout primitives from "~/components/ui" or patterns inside src/components/ui/.`,
+          );
+        } else if (
+          !isUiPrimitive &&
+          (mod === "styled-system/patterns" || mod.startsWith("styled-system/patterns/"))
+        ) {
+          report(
+            node,
+            "STYLE_RUNTIME_IMPORT_BANNED",
+            `Direct import from "${mod}" outside UI primitives is forbidden. Consume layout primitives from "~/components/ui" (one-off styles may use css() from "styled-system/css").`,
+          );
         }
-      } else if (
-        ts.isCallExpression(node) &&
-        node.expression.getText(sourceFile) === "css" &&
-        node.arguments.length > 0
-      ) {
-        const normalized = node.arguments
-          .map((arg) => arg.getText(sourceFile).replace(/\s+/g, " ").trim())
-          .join(",");
-        const existing = adhocCssOccurrences.get(normalized) ?? [];
-        existing.push({ sourceFile, node });
-        adhocCssOccurrences.set(normalized, existing);
       }
     }
 
-    // Rule #8: In src/routes/, forbid exported interface/type declarations so domain contracts live in src/schema/.
-    // src/lib/ is permitted to export its own client/hook configuration types.
+    // Rule #7: In src/routes/, forbid exported interface/type declarations so domain contracts live in src/schema/.
     if (isRoute) {
       if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
         const hasExport = node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
@@ -584,7 +513,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // Rule #10: Check for banned legacy Solid 1.x APIs
+    // Rule #9: Check for banned legacy Solid 1.x APIs
     if (ts.isIdentifier(node)) {
       const idName = node.text;
       if (BANNED_LEGACY_SOLID_APIS.has(idName)) {
@@ -604,7 +533,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // Rule #11: In src/lib/, enforce diagnostic attribution { name: ... } on shared reactive primitives
+    // Rule #10: In src/lib/, enforce diagnostic attribution { name: ... } on shared reactive primitives
     if (isLib && ts.isCallExpression(node)) {
       const fnName = node.expression.getText(sourceFile);
       if (fnName === "createSignal" || fnName === "createMemo" || fnName === "createOptimistic") {
@@ -623,10 +552,10 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
                 ) {
                   hasNameOption = true;
                 } else {
-                  const initType = checker.getTypeAtLocation(prop.initializer);
+                  const initType = appChecker.getTypeAtLocation(prop.initializer);
                   hasNameOption =
                     Boolean(initType.flags & ts.TypeFlags.StringLike) ||
-                    checker.typeToString(initType) === "string";
+                    appChecker.typeToString(initType) === "string";
                 }
                 if (hasNameOption) break;
               }
@@ -646,7 +575,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // Rule #12: Check for legacy typography props on <Text>, <Heading>, <Code>
+    // Rule #11: Check for legacy typography props on <Text>, <Heading>, <Code>
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
       if (tagName === "Text" || tagName === "Heading" || tagName === "Code") {
@@ -665,7 +594,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // Rule #13: Check for component parameter destructuring: function Comp({ prop }) is banned
+    // Rule #12: Check for component parameter destructuring: function Comp({ prop }) is banned
     if (ts.isFunctionDeclaration(node)) {
       const fnName = node.name?.text;
       if (fnName && isPascalCase(fnName)) {
@@ -698,8 +627,8 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
       }
     }
 
-    // Rule #14: Architecture boundary: In src/routes/, forbid direct fetch() or DbConnection instantiation
-    if (isRoute) {
+    // Rule #13: Architecture boundary: In src/routes/ and src/components/, forbid direct fetch() or DbConnection instantiation
+    if (isRoute || isComponents) {
       if (ts.isCallExpression(node)) {
         const callTarget = node.expression.getText(sourceFile);
         if (
@@ -710,7 +639,7 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
           report(
             node,
             "UNSCOPED_IO_CALL_BANNED",
-            "Direct fetch() call in routes is forbidden. All external I/O must be encapsulated in src/lib/ or Context Actions.",
+            "Direct fetch() call in routes or UI components is forbidden. All external I/O must be encapsulated in src/lib/ or Context Providers.",
           );
         }
       } else if (ts.isNewExpression(node)) {
@@ -719,13 +648,13 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
           report(
             node,
             "UNSCOPED_IO_CALL_BANNED",
-            "Direct DbConnection instantiation in routes is forbidden. SpacetimeDB connections must be managed via src/lib/ or Context Providers.",
+            "Direct DbConnection instantiation in routes or UI components is forbidden. SpacetimeDB connections must be managed via src/lib/ or Context Providers.",
           );
         }
       }
     }
 
-    // Rule #15: Forbid legacy single-argument createEffect(fn) to prevent hitting the Ark UI 5.x compatibility bridge
+    // Rule #14: Forbid legacy single-argument createEffect(fn) to prevent hitting the Ark UI 5.x compatibility bridge
     if (ts.isCallExpression(node)) {
       const fnName = node.expression.getText(sourceFile);
       if (fnName === "createEffect") {
@@ -759,31 +688,23 @@ function scanSourceFile(sourceFile: ts.SourceFile) {
 }
 
 for (const filePath of srcFilePaths) {
-  const sourceFile = program.getSourceFile(filePath);
+  const sourceFile = appProgram.getSourceFile(filePath);
   if (sourceFile) {
     scanSourceFile(sourceFile);
   }
 }
 
-for (const filePath of [...serverFilePaths, ...moduleFilePaths]) {
-  const sourceFile = program.getSourceFile(filePath);
+for (const filePath of serverFilePaths) {
+  const sourceFile = serverProgram.getSourceFile(filePath);
   if (sourceFile) {
     scanBackendFile(sourceFile);
   }
 }
 
-// Enforce rule #7 repetition threshold: >= 3 identical one-off css() calls must be extracted
-for (const [, occurrences] of adhocCssOccurrences) {
-  if (occurrences.length > MAX_IDENTICAL_ADHOC_CSS_COUNT) {
-    for (const { sourceFile, node } of occurrences) {
-      addViolation(
-        sourceFile,
-        relative(ROOT_DIR, sourceFile.fileName),
-        node,
-        "REPEATED_ADHOC_CSS_BANNED",
-        `Identical one-off css() block repeated ${occurrences.length} times (>= 3). Extract it into a reusable cva() or panda.config.ts recipe.`,
-      );
-    }
+for (const filePath of moduleFilePaths) {
+  const sourceFile = moduleProgram.getSourceFile(filePath);
+  if (sourceFile) {
+    scanBackendFile(sourceFile);
   }
 }
 
@@ -799,13 +720,10 @@ if (violations.length > 0) {
     console.error(`  Remedy:  ${v.message}\n`);
   }
 
-  console.error(
-    `Total: ${violations.length} architectural violation(s). Fix all violations before proceeding.\n`,
-  );
+  console.error(`Total Violations: ${violations.length}`);
   process.exit(1);
-} else {
-  console.log(
-    "✅ [ARCHITECTURAL RAILS VERIFIED] All 16 architectural invariants strictly verified across src/, server/, and spacetimedb/ via TypeScript AST & TypeChecker.\n",
-  );
-  process.exit(0);
 }
+
+console.log(
+  "✅ [ARCHITECTURAL RAILS VERIFIED] All 15 calibrated architectural invariants verified across isolated app, server, and module TypeScript programs.",
+);

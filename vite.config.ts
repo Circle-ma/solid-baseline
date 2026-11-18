@@ -8,8 +8,10 @@ export default defineConfig({
     pandacss(),
     solid({
       start: true,
-      // Default is client-rendered SPA onto a prerendered static document shell.
-      // Set `ssr: true` to enable streaming server-side rendering with zero config changes.
+      // Client-rendered SPA mounted onto a prerendered static Document shell (`ssr: false`).
+      // Full SSR is intentionally not enabled by default: enabling `ssr: true` requires supplying
+      // an absolute server-side origin to `<RpcProvider baseUrl={...}>` (instead of the client
+      // same-origin relative path) and reading the `theme` cookie on the server to match `<html class="dark">`.
       ssr: false,
       diagnostics: true,
     }),
@@ -29,6 +31,10 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/healthz": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/readyz": {
         target: "http://localhost:8080",
         changeOrigin: true,
       },

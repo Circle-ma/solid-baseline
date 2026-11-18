@@ -33,6 +33,9 @@
       },
     },
   },
+  "trustedDependencies": [
+    "@parcel/watcher",
+  ],
   "patchedDependencies": {
     "solid-js@2.0.0": "patches/solid-js@2.0.0.patch",
   },

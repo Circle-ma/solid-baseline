@@ -1,9 +1,14 @@
 @layer reset, base, tokens, recipes, utilities;
 
-@font-face {
-  font-family: "MiSans TC";
-  src: url("/MisansTC VF.ttf") format("truetype");
-  font-weight: 100 900;
-  font-display: swap;
-  unicode-range: U+4E00-9FFF, U+3400-4DBF, U+3000-303F, U+FF00-FFEF;
-}
+/*
+ * Optional self-hosted font pattern (keep filenames lowercase kebab-case without spaces,
+ * prefer WOFF2 compression, and scope with `unicode-range` so non-Latin fonts load on demand):
+ *
+ * @font-face {
+ *   font-family: "MiSans TC";
+ *   src: url("/fonts/misans-tc-vf.woff2") format("woff2");
+ *   font-weight: 100 900;
+ *   font-display: swap;
+ *   unicode-range: U+4E00-9FFF, U+3400-4DBF, U+3000-303F, U+FF00-FFEF;
+ * }
+ */

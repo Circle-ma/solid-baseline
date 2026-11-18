@@ -21,7 +21,7 @@ export default defineConfig({
     setupFiles: ["./src/__tests__/setup.ts"],
     server: {
       deps: {
-        inline: true,
+        inline: [/^solid-js/, /^@solidjs\//, /^@ark-ui\/solid/, /^@zag-js\//],
       },
     },
   },

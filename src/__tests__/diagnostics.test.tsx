@@ -7,9 +7,9 @@ import {
 } from "@solidjs/diagnostics";
 import { createRouter, defineRoute, defineRoutes, memoryHistory } from "@solidjs/router";
 import { render } from "@solidjs/web";
-import { action, createMemo, createSignal, flush, untrack } from "solid-js";
-import { describe, expect, it } from "vitest";
-import { router } from "~/App";
+import { createMemo, createRoot, createSignal, createStore, flush, untrack } from "solid-js";
+import { describe, expect, it, vi } from "vitest";
+import { router, routes } from "~/App";
 import {
   AsyncBoundary,
   Box,
@@ -19,15 +19,20 @@ import {
   HStack,
   Icon,
   Input,
+  Link,
   NavLink,
+  Skeleton,
   Text,
+  Textarea,
   ThemeToggle,
 } from "~/components/ui";
 import {
   createHealthCheckQuery,
+  createRpcQuery,
   LiveSpacetimeAdapter,
   OfflineSandboxSpacetimeAdapter,
   RpcProvider,
+  reconcileTableStore,
   SpacetimeProvider,
   useSpacetime,
 } from "~/lib";
@@ -153,8 +158,8 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
     container.remove();
   });
 
-  // Scenario 3: Headless Dialog state machine and Portal DOM lifecycle
-  it("Scenario 3: Headless Dialog open, type, and dismiss cleans up Portal DOM with zero diagnostics", async () => {
+  // Scenario 3: Headless Dialog state machine, exit animation presence lifecycle, and Portal DOM unmount
+  it("Scenario 3: Headless Dialog open, type, exit animation transition, and Portal DOM teardown have zero diagnostics", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
 
@@ -163,9 +168,9 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
         <Dialog.Root>
           <Dialog.Trigger>Open Test Dialog</Dialog.Trigger>
           <Dialog.Portal>
-            <Dialog.Backdrop />
+            <Dialog.Backdrop data-testid="dialog-backdrop" />
             <Dialog.Positioner>
-              <Dialog.Content>
+              <Dialog.Content data-testid="dialog-content">
                 <Dialog.Header>
                   <Dialog.Title>Modal Title</Dialog.Title>
                 </Dialog.Header>
@@ -183,46 +188,122 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
     }
 
     const dispose = render(() => <TestDialog />, container);
-    const triggerBtn = container.querySelector("button");
-    expect(triggerBtn).toBeDefined();
-
-    // 1. Open the dialog
-    triggerBtn?.click();
-    await Promise.resolve();
-    flush();
-
-    const input = document.body.querySelector("input[placeholder='Dialog input']");
-    expect(input).toBeDefined();
-    const allButtons = Array.from(document.body.querySelectorAll("button"));
-    const closeBtn = allButtons.find((b) => b.textContent?.includes("Close Modal"));
-    expect(closeBtn).toBeDefined();
-
-    // 2. Capture interaction within modal: fine-grained typing
-    const { artifact } = await captureArtifact(
-      async () => {
-        if (input) {
-          (input as HTMLInputElement).value = "modal test content";
-          input.dispatchEvent(new Event("input", { bubbles: true }));
+    const nativeGetComputedStyle = window.getComputedStyle.bind(window);
+    const getComputedStyleSpy = vi
+      .spyOn(window, "getComputedStyle")
+      .mockImplementation((el: Element, pseudo?: string | null) => {
+        const base = nativeGetComputedStyle(el, pseudo);
+        if (el.getAttribute("data-testid") === "dialog-content") {
+          return new Proxy(base, {
+            get(target, prop, receiver) {
+              if (prop === "animationName") {
+                return el.getAttribute("data-state") === "closed"
+                  ? "dialogScaleOut"
+                  : "dialogScaleIn";
+              }
+              if (prop === "animationDuration") {
+                return "150ms";
+              }
+              return Reflect.get(target, prop, receiver);
+            },
+          });
         }
+        return base;
+      });
+    const getAnimationsSpy = vi
+      .spyOn(HTMLElement.prototype, "getAnimations")
+      .mockImplementation(function (this: HTMLElement) {
+        if (
+          this.getAttribute("data-testid") === "dialog-content" &&
+          this.getAttribute("data-state") === "closed"
+        ) {
+          return [
+            { animationName: "dialogScaleOut", playState: "running" } as unknown as Animation,
+          ];
+        }
+        return [];
+      });
+
+    try {
+      const triggerBtn = container.querySelector("button");
+      expect(triggerBtn).not.toBeNull();
+      // lazyMount=true by default: portal is not mounted before opening
+      expect(document.body.querySelector("[data-testid='dialog-content']")).toBeNull();
+
+      // 1. Open the dialog and wait for Zag.js dialog + presence state machines to mount
+      triggerBtn?.click();
+      await vi.waitFor(() => {
         flush();
-      },
-      { scenario: "scenario-3-dialog-lifecycle" },
-    );
+        expect(document.body.querySelector("input[placeholder='Dialog input']")).not.toBeNull();
+      });
 
-    expect(artifact).toBeDefined();
-    expectNoDiagnostics(artifact);
-    expectNoWaste(artifact);
-    assertBudget(artifact, { maxSilentHoldMs: 0 });
+      const contentEl = document.body.querySelector(
+        "[data-testid='dialog-content']",
+      ) as HTMLElement | null;
+      const backdropEl = document.body.querySelector(
+        "[data-testid='dialog-backdrop']",
+      ) as HTMLElement | null;
+      const input = document.body.querySelector(
+        "input[placeholder='Dialog input']",
+      ) as HTMLInputElement | null;
+      const closeBtn = Array.from(document.body.querySelectorAll("button")).find((b) =>
+        b.textContent?.includes("Close Modal"),
+      );
 
-    // 3. Dismiss modal and verify Portal DOM teardown
-    (closeBtn as HTMLButtonElement)?.click();
-    await Promise.resolve();
-    flush();
+      expect(contentEl?.getAttribute("data-state")).toBe("open");
+      expect(backdropEl?.getAttribute("data-state")).toBe("open");
+      expect(input).not.toBeNull();
+      expect(closeBtn).toBeDefined();
 
-    expect(document.body.querySelector("input[placeholder='Dialog input']")).toBeNull();
+      // 2. Capture interaction within modal: fine-grained typing
+      const { artifact } = await captureArtifact(
+        async () => {
+          if (input) {
+            input.value = "modal test content";
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+          flush();
+        },
+        { scenario: "scenario-3-dialog-lifecycle" },
+      );
 
-    dispose();
-    container.remove();
+      expect(artifact).toBeDefined();
+      expectNoDiagnostics(artifact);
+      expectNoWaste(artifact);
+      assertBudget(artifact, { maxSilentHoldMs: 0 });
+
+      // 3. Dismiss while CSS exit animation (`dialogScaleOut`) is active:
+      //    closing must transition data-state to "closed" on the SAME DOM node and keep Portal mounted until animationend
+      closeBtn?.click();
+      await vi.waitFor(() => {
+        flush();
+        expect(contentEl?.isConnected).toBe(true);
+        expect(contentEl?.getAttribute("data-state")).toBe("closed");
+        expect(backdropEl?.getAttribute("data-state")).toBe("closed");
+        expect(triggerBtn?.getAttribute("data-state")).toBe("closed");
+        expect(contentEl?.hasAttribute("hidden")).toBe(false);
+        expect(contentEl?.style.animationFillMode).toBe("forwards");
+      });
+
+      // Portal DOM MUST remain mounted while exit animation is still running
+      expect(document.body.querySelector("[data-testid='dialog-content']")).toBe(contentEl);
+
+      // 4. Complete exit animation -> Zag presence finishes unmount and removes Portal DOM completely
+      const animEnd = new Event("animationend", { bubbles: true });
+      Object.defineProperty(animEnd, "animationName", { value: "dialogScaleOut" });
+      contentEl?.dispatchEvent(animEnd);
+
+      await vi.waitFor(() => {
+        flush();
+        expect(document.body.querySelector("[data-testid='dialog-content']")).toBeNull();
+      });
+      expect(document.body.querySelector("input[placeholder='Dialog input']")).toBeNull();
+    } finally {
+      getAnimationsSpy.mockRestore();
+      getComputedStyleSpy.mockRestore();
+      dispose();
+      container.remove();
+    }
   });
 
   // Scenario 4: Declarative ConnectRPC async query via RpcProvider (zero OPTIMISTIC_REVERTED)
@@ -494,19 +575,29 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
     defaultContainer.remove();
   });
 
-  // Scenario 7: AsyncBoundary suspending and error self-healing
-  it("Scenario 7: AsyncBoundary suspending & error self-healing with zero diagnostics and zero waste", async () => {
+  // Scenario 7: AsyncBoundary reactive error updates, automatic signal self-healing, and imperative Retry recovery
+  it("Scenario 7: AsyncBoundary updates error details reactively and self-heals with zero diagnostics and zero waste", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    const [status, setStatus] = createSignal("initial", {
-      name: "test-boundary-status",
-    });
+    const [status, setStatus] = createSignal<"initial" | "failing-1" | "failing-2" | "recovered">(
+      "initial",
+      {
+        name: "test-boundary-status",
+      },
+    );
+    let transientFault = false;
 
     const content = createMemo(
       () => {
-        if (status() === "failing") {
-          throw new Error("Simulated computation failure");
+        if (status() === "failing-1") {
+          throw new Error("Simulated computation failure #1");
+        }
+        if (status() === "failing-2") {
+          throw new Error("Simulated computation failure #2");
+        }
+        if (transientFault) {
+          throw new Error("Transient non-reactive fault");
         }
         return status() === "recovered" ? "Recovered Content" : "Initial Content";
       },
@@ -515,44 +606,75 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
 
     const dispose = render(
       () => (
-        <AsyncBoundary>
+        <AsyncBoundary
+          onRetry={() => {
+            transientFault = false;
+          }}
+        >
           <Text>{content()}</Text>
         </AsyncBoundary>
       ),
       container,
     );
 
-    // 1. Trigger error condition before capture to test self-healing lifecycle
-    setStatus("failing");
-    flush();
-    expect(container.textContent).toContain("Application Error");
+    try {
+      // 1. Trigger error condition and verify reactive error updates inside fallback (no stale untrack snapshot)
+      setStatus("failing-1");
+      flush();
+      expect(container.textContent).toContain("Application Error");
+      expect(container.textContent).toContain("Simulated computation failure #1");
 
-    // eslint-disable-next-line require-yield
-    const heal = action(function* () {
-      setStatus("recovered");
+      setStatus("failing-2");
+      flush();
+      expect(container.textContent).toContain("Simulated computation failure #2");
+
+      // 2. Solid 2.0 <Errored> self-heals automatically when the reactive dependency recovers
+      const { artifact: selfHealArtifact } = await captureArtifact(
+        async () => {
+          setStatus("recovered");
+          flush();
+        },
+        { scenario: "scenario-7-async-boundary-auto-heal" },
+      );
+
+      expect(selfHealArtifact).toBeDefined();
+      expectNoDiagnostics(selfHealArtifact);
+      expectNoWaste(selfHealArtifact);
+      assertBudget(selfHealArtifact, {
+        maxSilentHoldMs: 0,
+        scopes: { "fallible-content": 1 },
+      });
+      expect(container.textContent).toContain("Recovered Content");
+
+      // 3. Imperative Retry button clears transient faults via onRetry() + reset()
+      transientFault = true;
+      setStatus("initial");
+      flush();
+      expect(container.textContent).toContain("Transient non-reactive fault");
+
       const retryBtn = container.querySelector("button");
-      expect(retryBtn).toBeDefined();
+      expect(retryBtn).not.toBeNull();
       expect(retryBtn?.textContent).toContain("Retry");
-      retryBtn?.click();
-    });
 
-    // 2. Capture the self-healing recovery interaction
-    const { artifact } = await captureArtifact(
-      async () => {
-        await heal();
-        flush();
-      },
-      { scenario: "scenario-7-async-boundary-healing" },
-    );
+      const { artifact: retryArtifact } = await captureArtifact(
+        async () => {
+          retryBtn?.click();
+          flush();
+        },
+        { scenario: "scenario-7-async-boundary-imperative-retry" },
+      );
 
-    expect(artifact).toBeDefined();
-    expectNoDiagnostics(artifact);
-    expectNoWaste(artifact);
-    assertBudget(artifact, { maxSilentHoldMs: 0 });
-    expect(container.textContent).toContain("Recovered Content");
-
-    dispose();
-    container.remove();
+      expect(retryArtifact).toBeDefined();
+      expectNoDiagnostics(retryArtifact);
+      assertBudget(retryArtifact, {
+        maxSilentHoldMs: 0,
+        scopes: { "fallible-content": 1 },
+      });
+      expect(container.textContent).toContain("Initial Content");
+    } finally {
+      dispose();
+      container.remove();
+    }
   });
 
   // Scenario 8: Zero-flicker ThemeToggle (pure CSS _dark + cookie sync) & type-safe module-level router
@@ -564,6 +686,10 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
     const dispose = render(() => <ThemeToggle />, container);
     const button = container.querySelector("button");
     expect(button).not.toBeNull();
+    // No static aria-label overriding the sr-only child text branches
+    expect(button?.getAttribute("aria-label")).toBeNull();
+    expect(button?.textContent).toContain("Switch to dark mode");
+    expect(button?.textContent).toContain("Switch to light mode");
     // Both Sun and Moon <Icon> SVGs are rendered upfront so CSS `_dark` swaps them with zero flicker
     expect(container.querySelectorAll("svg").length).toBe(2);
 
@@ -591,24 +717,41 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
     container.remove();
   });
 
-  // Scenario 9: Real RPC rejection -> AsyncBoundary Retry -> self-healing recovery (zero cheating)
+  // Scenario 9: Real RPC rejection -> AsyncBoundary Retry -> self-healing recovery (deterministic deferred promises)
   it("Scenario 9: AsyncBoundary recovers from a real RPC rejection upon clicking Retry while keeping Card.Header mounted", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
 
+    function createDeferred<T>() {
+      let resolveDeferred!: (value: T) => void;
+      let rejectDeferred!: (reason?: unknown) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolveDeferred = res;
+        rejectDeferred = rej;
+      });
+      return { promise, resolve: resolveDeferred, reject: rejectDeferred };
+    }
+
     let attempt = 0;
+    const firstAttempt = createDeferred<{
+      status: HealthCheckStatus;
+      version: string;
+      uptimeSeconds: number;
+    }>();
+    const secondAttempt = createDeferred<{
+      status: HealthCheckStatus;
+      version: string;
+      uptimeSeconds: number;
+    }>();
+
     const flakyTransport = createRouterTransport((rpcRouter) => {
       rpcRouter.service(SystemService, {
         async checkHealth(_req) {
           attempt += 1;
           if (attempt === 1) {
-            throw new ConnectError("Upstream temporarily unavailable", Code.Unavailable);
+            return firstAttempt.promise;
           }
-          return {
-            status: HealthCheckStatus.SERVING,
-            version: "2026.3.recovered",
-            uptimeSeconds: 42,
-          };
+          return secondAttempt.promise;
         },
       });
     });
@@ -624,56 +767,74 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
       container,
     );
 
-    const invokeBtn = Array.from(container.querySelectorAll("button")).find((b) =>
-      b.textContent?.includes("Invoke HealthCheck RPC"),
-    );
-    expect(invokeBtn).toBeDefined();
-
-    // 1. Trigger the first RPC call which genuinely rejects
-    invokeBtn?.click();
-    await new Promise((resolveWait) => setTimeout(resolveWait, 20));
-    flush();
-
-    expect(attempt).toBe(1);
-    expect(container.textContent).toContain("Application Error");
-    expect(container.textContent).toContain("Upstream temporarily unavailable");
-    // Fine-grained AsyncBoundary keeps Card.Header, error status badge, and trigger button intact
-    expect(container.textContent).toContain("ConnectRPC Client Pipeline");
-    expect(container.textContent).toContain("Status: ERROR");
-    expect(
-      Array.from(container.querySelectorAll("button")).some((b) =>
+    try {
+      const invokeBtn = Array.from(container.querySelectorAll("button")).find((b) =>
         b.textContent?.includes("Invoke HealthCheck RPC"),
-      ),
-    ).toBe(true);
+      );
+      expect(invokeBtn).toBeDefined();
 
-    // 2. Click Retry directly without mutating any state beforehand
-    const retryBtn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent?.trim() === "Retry",
-    );
-    expect(retryBtn).toBeDefined();
+      // 1. Trigger the first RPC call and deterministically reject it
+      invokeBtn?.click();
+      await vi.waitFor(() => {
+        expect(attempt).toBe(1);
+      });
 
-    const { artifact } = await captureArtifact(
-      async () => {
-        retryBtn?.click();
-        await new Promise((resolveWait) => setTimeout(resolveWait, 20));
+      firstAttempt.reject(new ConnectError("Upstream temporarily unavailable", Code.Unavailable));
+
+      await vi.waitFor(() => {
         flush();
-      },
-      { scenario: "scenario-9-rpc-rejection-retry-recovery" },
-    );
+        expect(container.textContent).toContain("Application Error");
+        expect(container.textContent).toContain("Upstream temporarily unavailable");
+      });
 
-    expect(artifact).toBeDefined();
-    expectNoDiagnostics(artifact);
-    assertBudget(artifact, {
-      maxSilentHoldMs: 0,
-      scopes: { "rpc-health-query": 1 },
-    });
-    expect(attempt).toBe(2);
-    expect(container.textContent).not.toContain("Application Error");
-    expect(container.textContent).toContain("2026.3.recovered");
-    expect(container.textContent).toContain("Status: SERVING");
+      // Fine-grained AsyncBoundary keeps Card.Header, error status badge, and trigger button intact
+      expect(container.textContent).toContain("ConnectRPC Client Pipeline");
+      expect(container.textContent).toContain("Status: ERROR");
+      expect(
+        Array.from(container.querySelectorAll("button")).some((b) =>
+          b.textContent?.includes("Invoke HealthCheck RPC"),
+        ),
+      ).toBe(true);
 
-    dispose();
-    container.remove();
+      // 2. Click Retry directly without mutating any state beforehand
+      const retryBtn = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent?.trim() === "Retry",
+      );
+      expect(retryBtn).toBeDefined();
+
+      const { artifact } = await captureArtifact(
+        async () => {
+          retryBtn?.click();
+          await vi.waitFor(() => {
+            expect(attempt).toBe(2);
+          });
+          secondAttempt.resolve({
+            status: HealthCheckStatus.SERVING,
+            version: "2026.3.recovered",
+            uptimeSeconds: 42,
+          });
+          await vi.waitFor(() => {
+            flush();
+            expect(container.textContent).toContain("2026.3.recovered");
+          });
+        },
+        { scenario: "scenario-9-rpc-rejection-retry-recovery" },
+      );
+
+      expect(artifact).toBeDefined();
+      expectNoDiagnostics(artifact);
+      assertBudget(artifact, {
+        maxSilentHoldMs: 0,
+        scopes: { "rpc-health-query": 1 },
+      });
+      expect(attempt).toBe(2);
+      expect(container.textContent).not.toContain("Application Error");
+      expect(container.textContent).toContain("2026.3.recovered");
+      expect(container.textContent).toContain("Status: SERVING");
+    } finally {
+      dispose();
+      container.remove();
+    }
   });
 
   // Scenario 10: Native Solid 2.0 array/object class pass-through & explicit Dialog.CloseButton / CloseTrigger asChild
@@ -832,10 +993,15 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
     const { artifact } = await captureArtifact(
       async () => {
         if (digitsEl) {
-          // 1. Parent rejects non-numeric character -> DOM reverts immediately
-          digitsEl.value = "123a";
+          digitsEl.focus();
+          // 1. Parent rejects non-numeric character -> DOM reverts after batched flush & preserves cursor
+          digitsEl.value = "12a3";
+          digitsEl.setSelectionRange(3, 3);
           digitsEl.dispatchEvent(new Event("input", { bubbles: true }));
+          await Promise.resolve();
+          await Promise.resolve();
           expect(digitsEl.value).toBe("123");
+          expect(digitsEl.selectionStart).toBe(2);
           expect(untrack(() => digits())).toBe("123");
 
           // 2. Sibling reactive attribute update does not emit UNCOMMITTED_INPUT_OVERWRITTEN
@@ -846,6 +1012,8 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
           // 3. Parent accepts valid numeric character
           digitsEl.value = "1234";
           digitsEl.dispatchEvent(new Event("input", { bubbles: true }));
+          await Promise.resolve();
+          await Promise.resolve();
           expect(digitsEl.value).toBe("1234");
           expect(untrack(() => digits())).toBe("1234");
         }
@@ -854,11 +1022,15 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
           // 4. Parent formats lowercase -> uppercase and DOM reflects formatted string
           upperEl.value = "ab";
           upperEl.dispatchEvent(new Event("input", { bubbles: true }));
+          await Promise.resolve();
+          await Promise.resolve();
           expect(upperEl.value).toBe("AB");
           expect(untrack(() => upper())).toBe("AB");
 
           upperEl.value = "abc";
           upperEl.dispatchEvent(new Event("input", { bubbles: true }));
+          await Promise.resolve();
+          await Promise.resolve();
           expect(upperEl.value).toBe("ABC");
           expect(untrack(() => upper())).toBe("ABC");
         }
@@ -1095,5 +1267,470 @@ describe("Solid 2.0 Reactive Diagnostics Verification Matrix", () => {
     unsubId();
     dispose();
     container.remove();
+  });
+
+  // Scenario 14: New UI primitives (Link external hardening, Textarea controlled sync, Skeleton, Card variants)
+  it("Scenario 14: Link, Textarea, Skeleton, and Card variant/density context render cleanly with zero diagnostics", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const [notes, setNotes] = createSignal("hello", { name: "test-textarea" });
+    const [cardVariant, setCardVariant] = createSignal<"outline" | "elevated" | "subtle">(
+      "elevated",
+      { name: "test-card-variant" },
+    );
+    const [cardDensity, setCardDensity] = createSignal<"normal" | "compact">("compact", {
+      name: "test-card-density",
+    });
+
+    const dispose = render(
+      () => (
+        <Box>
+          <Link data-testid="ext-link" href="https://docs.solidjs.com" external>
+            Solid Docs
+          </Link>
+          <Textarea
+            data-testid="notes-area"
+            value={notes()}
+            onValueChange={(next) => {
+              if (next.length <= 8) setNotes(next);
+            }}
+          />
+          <Skeleton data-testid="skel-lines" lines={3} />
+          <Card.Root data-testid="var-card" variant={cardVariant()} density={cardDensity()}>
+            <Card.Body data-testid="var-card-body">Variant body</Card.Body>
+          </Card.Root>
+        </Box>
+      ),
+      container,
+    );
+
+    try {
+      const extLink = container.querySelector("[data-testid='ext-link']") as HTMLAnchorElement;
+      expect(extLink.getAttribute("target")).toBe("_blank");
+      expect(extLink.getAttribute("rel")).toContain("noopener");
+      expect(extLink.getAttribute("rel")).toContain("noreferrer");
+
+      const skelContainer = container.querySelector("[data-testid='skel-lines']");
+      expect(skelContainer?.children.length).toBe(3);
+
+      const varCard = container.querySelector("[data-testid='var-card']");
+      const varCardBody = container.querySelector("[data-testid='var-card-body']");
+      expect(varCard?.classList.contains("card__root--variant_elevated")).toBe(true);
+      expect(varCard?.classList.contains("card__root--density_compact")).toBe(true);
+      expect(varCardBody?.classList.contains("card__body--density_compact")).toBe(true);
+
+      const notesEl = container.querySelector("[data-testid='notes-area']") as HTMLTextAreaElement;
+
+      const { artifact } = await captureArtifact(
+        async () => {
+          notesEl.value = "1234567890";
+          notesEl.dispatchEvent(new Event("input", { bubbles: true }));
+          await Promise.resolve();
+          await Promise.resolve();
+          expect(notesEl.value).toBe("hello");
+
+          setCardVariant("subtle");
+          setCardDensity("normal");
+          flush();
+        },
+        { scenario: "scenario-14-ui-primitives-and-card-variants" },
+      );
+
+      expect(artifact).toBeDefined();
+      expectNoDiagnostics(artifact);
+      expectNoWaste(artifact);
+      expect(varCard?.classList.contains("card__root--variant_subtle")).toBe(true);
+      expect(varCardBody?.classList.contains("card__body--density_normal")).toBe(true);
+    } finally {
+      dispose();
+      container.remove();
+    }
+  });
+
+  // Scenario 15: SpacetimeDB empty live snapshot clears store, reconcileTableStore preserves identities, and OfflineSandbox emitSnapshot
+  it("Scenario 15: Empty live snapshot clears store, reconcileTableStore preserves identities, and sandbox emitSnapshot works", async () => {
+    // 1. Unit test reconcileTableStore fine-grained preservation & empty reconciliation
+    let r1LabelRuns = 0;
+    const storeScope = createRoot((dispose) => {
+      const [rows, setRows] = createStore([
+        { id: "r1", label: "first" },
+        { id: "r2", label: "second" },
+      ]);
+      const r1Label = createMemo(() => {
+        r1LabelRuns += 1;
+        return rows[0]?.label;
+      });
+      return { rows, setRows, r1Label, dispose };
+    });
+
+    try {
+      expect(untrack(() => storeScope.r1Label())).toBe("first");
+      expect(r1LabelRuns).toBe(1);
+
+      reconcileTableStore(
+        storeScope.setRows,
+        [
+          { id: "r1", label: "first" },
+          { id: "r3", label: "third" },
+        ],
+        "id",
+      );
+      flush();
+      expect(untrack(() => storeScope.rows.length)).toBe(2);
+      expect(untrack(() => storeScope.r1Label())).toBe("first");
+      // Unchanged r1 row must not trigger redundant recomputation
+      expect(r1LabelRuns).toBe(1);
+      expect(untrack(() => storeScope.rows[1]?.id)).toBe("r3");
+
+      reconcileTableStore(storeScope.setRows, [], "id");
+      flush();
+      expect(untrack(() => storeScope.rows.length)).toBe(0);
+    } finally {
+      storeScope.dispose();
+    }
+
+    // 2. LiveSpacetimeAdapter empty DB snapshot MUST invoke onSnapshot([]) and clear store
+    const liveCallbacks: {
+      onConnect:
+        | ((conn: SpacetimeLiveConnectionLike, identity: SpacetimeIdentityLike) => void)
+        | null;
+      onApplied: ((ctx: { db: { event_log: { iter(): Iterable<never> } } }) => void) | null;
+    } = {
+      onConnect: null,
+      onApplied: null,
+    };
+
+    const emptyLiveConn: SpacetimeLiveConnectionLike = {
+      db: {
+        event_log: {
+          onInsert() {},
+          onUpdate() {},
+          onDelete() {},
+          removeOnInsert() {},
+          removeOnUpdate() {},
+          removeOnDelete() {},
+          iter: () => [],
+        },
+      },
+      reducers: {
+        async txEvent() {},
+      },
+      subscriptionBuilder() {
+        return {
+          onApplied(cb) {
+            liveCallbacks.onApplied = cb;
+            return {
+              subscribe() {
+                return { isEnded: () => false, unsubscribe() {} };
+              },
+            };
+          },
+        };
+      },
+      disconnect() {},
+    };
+
+    const createEmptyBuilder = (): SpacetimeLiveConnectionBuilderLike => {
+      const builder: SpacetimeLiveConnectionBuilderLike = {
+        withUri: () => builder,
+        withDatabaseName: () => builder,
+        withAutomaticReconnect: () => builder,
+        withToken: () => builder,
+        onConnect(cb) {
+          liveCallbacks.onConnect = cb;
+          return builder;
+        },
+        onAutomaticReconnect: () => builder,
+        onConnectError: () => builder,
+        onDisconnect: () => builder,
+        build: () => emptyLiveConn,
+      };
+      return builder;
+    };
+
+    const liveAdapter = new LiveSpacetimeAdapter({ createBuilder: createEmptyBuilder });
+    const receivedSnapshots: number[] = [];
+    const unsubSnap = liveAdapter.onSnapshot("event_log", (snap) => {
+      receivedSnapshots.push(snap.length);
+    });
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let spacetimeRef!: ReturnType<typeof useSpacetime>;
+    function Consumer() {
+      spacetimeRef = useSpacetime();
+      return <Text>{spacetimeRef.records.length}</Text>;
+    }
+
+    const dispose = render(
+      () => (
+        <SpacetimeProvider adapter={liveAdapter} initialMode="local-cache">
+          <Consumer />
+        </SpacetimeProvider>
+      ),
+      container,
+    );
+
+    try {
+      // Seeded in local-cache initially
+      expect(spacetimeRef.records.length).toBe(2);
+
+      const connectPromise = liveAdapter.connect();
+      liveCallbacks.onConnect?.(emptyLiveConn, { toHexString: () => "0xempty" });
+      await connectPromise;
+
+      // Apply empty server snapshot -> MUST clear local seed rows to []
+      liveCallbacks.onApplied?.({ db: { event_log: { iter: () => [] } } });
+      flush();
+
+      expect(receivedSnapshots).toEqual([0]);
+      expect(spacetimeRef.records.length).toBe(0);
+    } finally {
+      unsubSnap();
+      dispose();
+      container.remove();
+    }
+
+    // 3. OfflineSandboxSpacetimeAdapter emitSnapshot dispatches snapshot listeners cleanly
+    const sandbox = new OfflineSandboxSpacetimeAdapter();
+    const sandboxSnaps: number[] = [];
+    const unsubSandbox = sandbox.onSnapshot("event_log", (snap) => sandboxSnaps.push(snap.length));
+    sandbox.emitSnapshot([
+      {
+        id: "rec_snap_1",
+        sender: "system",
+        action: "SNAPSHOT",
+        payload: "Hydrated",
+        timestamp: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+    expect(sandboxSnaps).toEqual([1]);
+    unsubSandbox();
+  });
+
+  // Scenario 16: createRpcQuery AbortController cancellation & Realtime HealthCheckStatus enum rendering
+  it("Scenario 16: createRpcQuery aborts superseded/unmounted requests and Realtime distinguishes UNKNOWN status", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const signals: AbortSignal[] = [];
+    const resolvers: Array<(value: string) => void> = [];
+    let queryHandle!: ReturnType<typeof createRpcQuery<string, string>>;
+
+    function AbortConsumer() {
+      queryHandle = createRpcQuery<string, string>({
+        name: "test-abort-query",
+        fetcher: (_param, signal) => {
+          signals.push(signal);
+          return new Promise<string>((resolveReq, rejectReq) => {
+            resolvers.push(resolveReq);
+            signal.addEventListener(
+              "abort",
+              () => rejectReq(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          });
+        },
+      });
+      return (
+        <AsyncBoundary>
+          <Text>{queryHandle.data() ?? "idle"}</Text>
+        </AsyncBoundary>
+      );
+    }
+
+    const disposeAbort = render(() => <AbortConsumer />, container);
+
+    void queryHandle.execute("req-1").catch(() => undefined);
+    await vi.waitFor(() => {
+      expect(signals.length).toBe(1);
+    });
+    expect(signals[0]?.aborted).toBe(false);
+
+    // Triggering a second request must automatically abort the first in-flight AbortSignal
+    const secondPromise = queryHandle.execute("req-2");
+    await vi.waitFor(() => {
+      expect(signals.length).toBe(2);
+    });
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[1]?.aborted).toBe(false);
+
+    // Complete second request cleanly, then start a third and unmount to verify cleanup abort
+    resolvers[1]?.("ok-2");
+    expect(await secondPromise).toBe("ok-2");
+
+    void queryHandle.execute("req-3").catch(() => undefined);
+    await vi.waitFor(() => {
+      expect(signals.length).toBe(3);
+    });
+    expect(signals[2]?.aborted).toBe(false);
+
+    // Unmounting must abort the in-flight request via onCleanup
+    disposeAbort();
+    expect(signals[2]?.aborted).toBe(true);
+
+    // Verify Realtime renders HealthCheckStatus.UNKNOWN distinctly (NOT as NOT_SERVING)
+    const unknownTransport = createRouterTransport((rpcRouter) => {
+      rpcRouter.service(SystemService, {
+        async checkHealth() {
+          return {
+            status: HealthCheckStatus.UNKNOWN,
+            version: "2026.4.0",
+            uptimeSeconds: 12,
+          };
+        },
+      });
+    });
+
+    const disposeRealtime = render(
+      () => (
+        <SpacetimeProvider adapter={new OfflineSandboxSpacetimeAdapter()}>
+          <RpcProvider transport={unknownTransport}>
+            <Realtime />
+          </RpcProvider>
+        </SpacetimeProvider>
+      ),
+      container,
+    );
+
+    try {
+      const invokeBtn = Array.from(container.querySelectorAll("button")).find((b) =>
+        b.textContent?.includes("Invoke HealthCheck RPC"),
+      );
+      invokeBtn?.click();
+
+      await vi.waitFor(() => {
+        flush();
+        expect(container.textContent).toContain("Status: UNKNOWN");
+      });
+      expect(container.textContent).not.toContain("NOT_SERVING");
+    } finally {
+      disposeRealtime();
+      container.remove();
+    }
+  });
+
+  // Scenario 17: Catch-all 404 route renders NotFound cleanly
+  it("Scenario 17: Catch-all 404 route renders NotFound view with navigation link back to Overview", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const history = memoryHistory("/does-not-exist");
+    const TestRouter = createRouter({ routes, history });
+
+    const dispose = render(
+      () => <TestRouter>{(props) => <Box as="main">{props.children}</Box>}</TestRouter>,
+      container,
+    );
+
+    try {
+      flush();
+      expect(container.textContent).toContain("404");
+      expect(container.textContent).toContain("Page Not Found");
+      const homeLink = container.querySelector("a[href='/']");
+      expect(homeLink).not.toBeNull();
+    } finally {
+      dispose();
+      container.remove();
+    }
+  });
+
+  // Scenario 18: Rapid toggleSimulationMode() cancels pending live connect without stale error/identity overwrite
+  it("Scenario 18: Rapid toggleSimulationMode() ignores stale rejected live connect() promises", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const pendingLiveConn: SpacetimeLiveConnectionLike = {
+      db: {
+        event_log: {
+          onInsert() {},
+          onUpdate() {},
+          onDelete() {},
+          removeOnInsert() {},
+          removeOnUpdate() {},
+          removeOnDelete() {},
+          iter: () => [],
+        },
+      },
+      reducers: {
+        async txEvent() {},
+      },
+      subscriptionBuilder() {
+        return {
+          onApplied() {
+            return {
+              subscribe() {
+                return { isEnded: () => false, unsubscribe() {} };
+              },
+            };
+          },
+        };
+      },
+      disconnect() {},
+    };
+
+    // Builder whose handshake never resolves on its own, so disconnect() aborts & rejects connect()
+    const createHangingBuilder = (): SpacetimeLiveConnectionBuilderLike => {
+      const builder: SpacetimeLiveConnectionBuilderLike = {
+        withUri: () => builder,
+        withDatabaseName: () => builder,
+        withAutomaticReconnect: () => builder,
+        withToken: () => builder,
+        onConnect: () => builder,
+        onAutomaticReconnect: () => builder,
+        onConnectError: () => builder,
+        onDisconnect: () => builder,
+        build: () => pendingLiveConn,
+      };
+      return builder;
+    };
+
+    const hangingLiveAdapter = new LiveSpacetimeAdapter({ createBuilder: createHangingBuilder });
+    let spacetimeRef!: ReturnType<typeof useSpacetime>;
+    function Consumer() {
+      spacetimeRef = useSpacetime();
+      return (
+        <Box>
+          <Text data-testid="mode">{spacetimeRef.connectionMode()}</Text>
+          <Text data-testid="identity">{spacetimeRef.clientIdentity()}</Text>
+          <Text data-testid="error">{spacetimeRef.lastError() ?? "none"}</Text>
+        </Box>
+      );
+    }
+
+    const dispose = render(
+      () => (
+        <SpacetimeProvider adapter={hangingLiveAdapter} initialMode="live">
+          <Consumer />
+        </SpacetimeProvider>
+      ),
+      container,
+    );
+
+    try {
+      // Wait for onSettled() to kick off live connect() (still pending handshake)
+      await Promise.resolve();
+      flush();
+      expect(untrack(() => spacetimeRef.connectionMode())).toBe("live");
+      expect(untrack(() => spacetimeRef.clientIdentity())).toBe("connecting...");
+
+      // Immediately switch back to local-cache while live connect() is still in flight;
+      // this disconnects hangingLiveAdapter, rejecting its pending connect() Promise.
+      spacetimeRef.toggleSimulationMode();
+      await Promise.resolve();
+      await Promise.resolve();
+      flush();
+
+      expect(untrack(() => spacetimeRef.connectionMode())).toBe("local-cache");
+      expect(untrack(() => spacetimeRef.isConnected())).toBe(true);
+      // Stale rejected connect() must NOT overwrite lastError or clobber clientIdentity to "disconnected"
+      expect(untrack(() => spacetimeRef.lastError())).toBeNull();
+      expect(untrack(() => spacetimeRef.clientIdentity())).not.toBe("disconnected");
+      expect(spacetimeRef.records.length).toBe(2);
+    } finally {
+      dispose();
+      container.remove();
+    }
   });
 });
