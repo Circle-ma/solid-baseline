@@ -11,17 +11,18 @@ The file `AGENTS.md` at the workspace root is the **SOLE ARCHITECTURAL CONSTITUT
 - **Runtime**: Strictly `bun` and `bunx`. Never invoke `npm`, `npx`, `yarn`, or `pnpm`.
 - **Pre-commit / Verification Mandate**: After making any modifications, you MUST run:
   ```bash
-  bun run check && bun run typecheck
+  bun run codegen && bun run format && bun run check && bun run typecheck && bun run build
   ```
-  Both must exit cleanly with zero errors before concluding your work.
+  All checks must exit cleanly with zero errors and zero warnings before concluding your work.
 - **Formatting**: `bun run format` (`biome format --write .`). Never add Prettier.
-- **Code Generation**: `bun run codegen` (`panda codegen --spec`).
+- **Code Generation**: `bun run codegen` (`panda codegen --spec`) and `bun run spacetime:generate`.
 
 ## 3. Immediate Invariant Reminders
 - Never use inline `style={{ ... }}`.
-- Never write hardcoded colors (`#hex`, `rgb(...)`) or magic numbers; use tokens from `~/components/ui/tokens`.
-- Never destructure component props (`function Comp({ prop })` is strictly forbidden; always use `props.prop`).
-- Spacing between siblings belongs exclusively to layout containers (`<Container>`, `<VStack>`, `<HStack>`, `<Grid>`) via `gap`. Margin props are banned (except `ml="auto"`, `mr="auto"`, `mx="auto"` for flex alignment).
-- Raw unstyled HTML elements outside `src/components/ui/` are banned; use Systematic UI primitives.
+- Never write hardcoded colors (`#hex`, `rgb(...)`) inside JSX style attributes or `css()`/`cva()`/`sva()` style objects; use tokens from `~/components/ui/tokens`.
+- Never destructure component props (`function Comp({ prop })` is strictly forbidden; always use `props.prop` and Solid 2.0 native `omit(props, ...)`).
+- Spacing between siblings belongs exclusively to layout containers (`<Container>`, `<VStack>`, `<HStack>`, `<Grid>`) via `gap`. Push margin props are banned in JSX and style objects (only `ml="auto"`, `mr="auto"`, `mx="auto"` are permitted for flex alignment).
+- One-off page layout styles in `src/routes/` may use `css()` from `styled-system/css` (identical blocks repeated >= 3 times must be extracted to `cva()` or `panda.config.ts` recipes).
+- Raw visual/interactive HTML elements (`button`, `input`, `select`, `textarea`, `h1`-`h6`, `p`, `a`, `hr`, `svg`) outside `src/components/ui/` are banned; use Systematic UI primitives (structural HTML tags are permitted).
 - Never use type escape hatches (`as any`, `@ts-ignore`, `@ts-expect-error`).
-- Tables, reducers, and RPC types must derive from `src/schema/`.
+- Tables, reducers, and RPC domain contracts must derive from `src/schema/`. Backend (`server/`, `spacetimedb/`) must remain strictly isolated from UI and browser DOM APIs.

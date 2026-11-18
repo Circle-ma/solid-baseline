@@ -6,34 +6,34 @@ A high-performance, type-safe, zero-tech-debt starter framework engineered for t
 
 ## ⚡ The 2026 Tech Stack
 
-| Domain           | Technology                                              | Version     | Purpose & Rationale                                                                   |
-| :--------------- | :------------------------------------------------------ | :---------- | :------------------------------------------------------------------------------------ |
-| **Architecture** | Solid 2.0 Start-Mode SPA                                | `Standard`  | Unified 2.0 convention (`Document.tsx` + `App.tsx`), SSR-isolated per-request router. |
-| **Runtime & PM** | [Bun](https://bun.sh/)                                  | `1.4.x`     | Blazing fast execution, unified package manager, native TS/JSX support.               |
-| **Bundler**      | [Vite](https://vite.dev/) + `@solidjs/vite-plugin`      | `8.3 / 3.0` | Instant HMR and lightning-fast ESNext client bundle extraction.                       |
-| **Reactive UI**  | [Solid.js 2.0](https://v2.solidjs.com/)                 | `2.0.0`     | Fine-grained reactivity, Zero-VDOM, async-first computations, draft stores.           |
-| **Routing**      | [Solid Router](https://github.com/solidjs/solid-router) | `2.0.0`     | Declarative routing with `createRouter`, `defineRoute`, typed `paths`.                |
-| **Headless UI**  | [Ark UI](https://ark-ui.com/)                           | `5.39.x`    | Accessible, robust state machines powered by [Zag.js](https://zagjs.com/).            |
-| **Styling**      | [Panda CSS](https://panda-css.com/)                     | `2.5.x`     | Zero-runtime build-time CSS-in-JS with strict tokens & native slot recipes.           |
-| **Linter**       | [Oxlint](https://oxc.rs/)                               | `1.90.x`    | Rust-based ultra-fast linter with Solid 2.0 `v2-strict` reactivity rules.             |
-| **Formatter**    | [Biome](https://biomejs.dev/)                           | `2.6.x`     | Blazing-fast Rust formatter and import organizer (replaces Prettier).                 |
-| **Realtime DB**  | [SpacetimeDB](https://spacetimedb.com/)                 | `2.15.x`    | In-memory relational database with WebSocket client cache synchronization.            |
-| **Typed RPC**    | [ConnectRPC](https://connectrpc.com/)                   | `2.3.x`     | Type-safe Protobuf and JSON RPC (`system.v1.SystemService`).                          |
-| **Testing**      | [Vitest](https://vitest.dev/) + `@solidjs/diagnostics`  | `5.1 / 2.0` | Automated reactive graph diagnostics (zero waste, zero silent holds).                 |
+| Domain           | Technology                                              | Version     | Purpose & Rationale                                                                                                     |
+| :--------------- | :------------------------------------------------------ | :---------- | :---------------------------------------------------------------------------------------------------------------------- |
+| **Architecture** | Solid 2.0 Start-Mode SPA                                | `Standard`  | Unified 2.0 convention (`Document.tsx` + `App.tsx`), module-level typed `router.paths`, lazy route splitting.           |
+| **Runtime & PM** | [Bun](https://bun.sh/)                                  | `1.4.x`     | Blazing fast execution, unified package manager, native TS/JSX support.                                                 |
+| **Bundler**      | [Vite](https://vite.dev/) + `@solidjs/vite-plugin`      | `8.3 / 3.0` | Instant HMR, same-origin dev proxy (`/system.v1.SystemService`, `/healthz`), ESNext code-split production build.        |
+| **Reactive UI**  | [Solid.js 2.0](https://v2.solidjs.com/)                 | `2.0.0`     | Fine-grained reactivity, Zero-VDOM, async-first computations, native `omit`, draft stores, array/object `class`.        |
+| **Routing**      | [Solid Router](https://github.com/solidjs/solid-router) | `2.0.0`     | Declarative routing with `createRouter`, `defineRoute`, type-safe `router.paths`, and `lazy()` route boundaries.        |
+| **Headless UI**  | [Ark UI](https://ark-ui.com/)                           | `5.39.x`    | Accessible, robust state machines powered by [Zag.js](https://zagjs.com/) with explicit `Dialog.CloseButton`/`asChild`. |
+| **Styling**      | [Panda CSS](https://panda-css.com/)                     | `2.5.x`     | Zero-runtime extraction via `@pandacss/vite`, Solid 2.0 `codegen:prepare` JSX plugin, strict tokens & slot recipes.     |
+| **Linter**       | [Oxlint](https://oxc.rs/)                               | `1.90.x`    | Rust-based ultra-fast linter (`src`, `server`, `scripts`, `spacetimedb`) with Solid 2.0 `v2-strict`.                    |
+| **Formatter**    | [Biome](https://biomejs.dev/)                           | `2.6.x`     | Blazing-fast Rust formatter and import organizer (replaces Prettier).                                                   |
+| **Realtime DB**  | [SpacetimeDB](https://spacetimedb.com/)                 | `2.15.x`    | Single-source SDK schema (`schema()`/`table()`/`reducers()`), ISO-8601 UTC timestamps, typed reducers & live WebSocket. |
+| **Typed RPC**    | [ConnectRPC](https://connectrpc.com/)                   | `2.3.x`     | Type-safe Protobuf/JSON RPC (`system.v1.SystemService`), composable `createRpcQuery()`, validated `createRpcHandler()`. |
+| **Testing**      | [Vitest](https://vitest.dev/) + `@solidjs/diagnostics`  | `5.1 / 2.0` | 18 reactive diagnostics, controlled input sync, typography inheritance, live reconnect & ConnectRPC server tests.       |
 
 ---
 
 ## 🏛️ Architecture & Single Source of Truth (SSOT)
 
-All architectural invariants, Solid 2.0 reactive contracts, design system closed-world tokens, and automated gatekeeper rules are strictly governed by **[AGENTS.md](AGENTS.md)**.
+All architectural invariants, Solid 2.0 reactive contracts, design system closed-world tokens, TypeScript environment boundaries, and automated gatekeeper rules are governed by **[AGENTS.md](AGENTS.md)** alongside curated agent skills in `.agents/skills/`.
 
 Engineers and AI agents must treat `AGENTS.md` as the single architectural constitution:
 
-- **Design System Rails**: Closed-world static token dictionary (`~/components/ui/tokens`), semantic shadow tokens (`card`, `modal`), `<Icon size="sm" | "md" | "lg">` atomic primitive, zero inline styles, zero hardcoded colors, zero magic numbers, and container-first spatial rhythm (`gap`).
-- **Solid.js 2.0 Contract**: No prop destructuring (`props.prop`), diagnostic signal attribution (`{ name: "..." }`), split `createEffect(compute, apply)`, controlled `<Input value={val() ?? ""} onValueChange={...} />`, draft stores, and `<Loading>`/`<Errored>` boundaries.
-- **Headless UI Primitives**: Autonomous Zag.js state machines via Ark UI, encapsulated `<Dialog.Portal>` lifecycles, and no boolean `asChild`.
-- **Data Layer SSOT**: Formal database, reducer, and RPC contracts in `src/schema/` (derived via ConnectRPC Protobuf and SpacetimeDB 2.15).
-- **Automated Rail Gatekeeper**: 15 AST-level architectural invariants verified via `bun run check:rails` (`scripts/check-rails.ts`).
+- **Design System Rails**: Closed-world static token dictionary (`~/components/ui/tokens`), semantic shadow tokens (`card`, `modal`, `focusRing`, `focusRingDanger` using Panda opacity syntax with zero raw `rgba`), concentric radii (`l3` -> `l2` -> `l1`), inherited inline `<Text as="span">` typography, global `prefers-reduced-motion: reduce` downgrade, polymorphic Panda JSX layout wrappers (`styled-system/jsx`), `<Icon size="sm" | "md" | "lg">`, one-off `css()` in routes (repetition `< 3`), and container-first spatial rhythm (`gap`).
+- **Solid.js 2.0 Contract**: No prop destructuring (`props.prop`), native `omit(props, ...)`, diagnostic signal attribution (`{ name: ... }`) in `src/lib/`, split `createEffect(compute, apply)`, synchronously routed controlled/uncontrolled `<Input>` with `flush()` DOM reconciliation, draft stores, composable `createRpcQuery()` (`flush()` + `resolve()`), route-scoped `<SpacetimeProvider>`, and self-healing `<AsyncBoundary onRetry={...}>`.
+- **Headless UI Primitives**: Autonomous Zag.js state machines via Ark UI, encapsulated `<Dialog.Portal>` lifecycles, pure unstyled `<Dialog.CloseTrigger>` (compose with `<Button>` via `asChild` render prop), and explicit `<Dialog.CloseButton />` for the top-right close icon button.
+- **Data Layer SSOT & Environment Isolation**: Single-source ConnectRPC Protobuf contracts and SpacetimeDB 2.15 SDK `table()`/`schema()`/`reducers()` definitions in `src/schema/`, paired with isolated TypeScript project references (`tsconfig.app.json`, `tsconfig.server.json`, `tsconfig.module.json`) ensuring backend/module code can never reference browser DOM types.
+- **Automated Rail Gatekeeper**: 16 calibrated AST & TypeChecker architectural invariants verified across `src/`, `server/`, and `spacetimedb/` via `bun run check:rails` (`scripts/check-rails.ts`).
 
 ---
 
@@ -42,25 +42,28 @@ Engineers and AI agents must treat `AGENTS.md` as the single architectural const
 All verification, compilation, and code generation protocols run through `bun`:
 
 ```bash
-# Code generation (Design system spec + Panda CSS)
+# Code generation (Design system spec + Panda CSS Solid 2.0 JSX runtime)
 bun run codegen
 
-# Full static & dynamic verification pipeline (Oxlint + Biome + AST check-rails + Vitest)
+# Generate SpacetimeDB TypeScript client bindings from spacetimedb/ module
+bun run spacetime:generate
+
+# Full static & dynamic verification pipeline (Oxlint + Biome + 16-rule AST check-rails + Vitest)
 bun run check
 
-# Run reactive diagnostics test suite
+# Run reactive diagnostics & server RPC test suite
 bun run test
 
-# TypeScript type verification
+# Isolated TypeScript verification (tsconfig.app.json + tsconfig.server.json + tsconfig.module.json)
 bun run typecheck
 
 # Code formatting
 bun run format
 
-# Concurrent fullstack development server (ConnectRPC :8080 + Vite :3000)
+# Concurrent fullstack development server (ConnectRPC :8080 + Vite :3000 with same-origin proxy)
 bun run dev
 
-# Production build
+# Production build (@pandacss/vite extracts CSS automatically + lazy route code-splitting)
 bun run build
 ```
 
@@ -77,51 +80,62 @@ bun run build
 ├── biome.json            # Biome 2.6 formatting & import organization rules
 ├── buf.yaml              # Buf Protobuf module configuration
 ├── buf.gen.yaml          # Buf codegen configuration (Protobuf-ES v2 -> src/gen/)
-├── docs/
-│   └── ai/               # Machine-readable library guides & llms.txt index
 ├── oxlint.config.ts      # Oxlint configuration with Solid 2.0 v2-strict rules
-├── package.json          # Latest stable dependency declarations & scripts
-├── panda.config.ts       # Panda CSS 2.5 tokens, semantic tokens (incl. shadows), and slot recipes
+├── package.json          # Latest stable dependency declarations & scripts (incl. spacetime:generate)
+├── panda.config.ts       # Panda CSS 2.5 tokens, semantic shadows, slot recipes, Solid 2.0 JSX codegen plugin
 ├── patches/              # Temporary compatibility bridge (Ark UI 5.x <-> Solid 2.0.0)
 ├── proto/                # Protobuf SSOT definitions (system/v1)
 ├── public/
 │   └── MisansTC VF.ttf   # Local variable CJK font loaded on-demand via unicode-range
 ├── scripts/
-│   ├── check-rails.ts    # 15 AST & TypeChecker architectural rail invariants
+│   ├── check-rails.ts    # 16 calibrated AST & TypeChecker invariants across src/, server/, spacetimedb/
 │   └── dev.ts            # Concurrent dev server orchestrator (Bun.spawn, clean SIGINT/SIGTERM)
 ├── server/
-│   └── index.ts          # ConnectRPC backend server (Bun.serve, CORS, /healthz, graceful shutdown)
+│   ├── index.ts          # Pure createRpcHandler() ConnectRPC server (service validation, JSON logs, server.stop(true))
+│   └── __tests__/
+│       └── rpc.test.ts   # Real HTTP/ConnectRPC tests (/healthz, CheckHealth validation, CORS, structured logs)
+├── spacetimedb/
+│   ├── package.json      # SpacetimeDB 2.x server module manifest (`system_db`)
+│   ├── tsconfig.json     # Extends ../tsconfig.module.json (pure module environment)
+│   └── src/
+│       └── index.ts      # Real SpacetimeDB 2.x server module (`event_log` table + `tx_event` reducer)
 ├── src/
-│   ├── Document.tsx      # Official Solid 2.0 Document HTML Shell (non-blocking fonts + zero-FOUC theme)
-│   ├── App.tsx           # Canonical starter application (SSR-isolated createAppRouter + Layout)
-│   ├── index.css         # Panda CSS cascade layers & local MiSans TC VF @font-face
+│   ├── Document.tsx      # Official Solid 2.0 Document HTML Shell (structured bootstrapDocumentHead + non-blocking fonts)
+│   ├── App.tsx           # Canonical SPA root (module-level router, lazy /realtime split, service-agnostic RpcProvider)
+│   ├── index.css         # Panda CSS cascade layers & local MiSans TC VF @font-face (imported once in App.tsx)
 │   ├── __tests__/
-│   │   ├── diagnostics.test.tsx # 8-scenario @solidjs/diagnostics + Vitest verification matrix
+│   │   ├── diagnostics.test.tsx # 13-scenario @solidjs/diagnostics matrix (input sync, text inheritance, live reconnect, RPC retry)
 │   │   └── setup.ts             # HappyDOM spec-compliant textContent test environment setup
 │   ├── gen/              # Buf-generated Protobuf & ConnectRPC typed schemas (system/v1)
-│   ├── routes/           # Declarative page views
-│   │   ├── overview.tsx  # Reactivity counter, controlled/uncontrolled Input & Ark UI dialog
-│   │   └── realtime.tsx  # SpacetimeDB realtime store & ConnectRPC declarative async query views
+│   ├── routes/           # Declarative page views (one-off css() layout constants allowed, < 3 repetitions)
+│   │   ├── overview.tsx  # Reactivity counter, controlled/uncontrolled Input & Ark UI Dialog (CloseButton + asChild)
+│   │   └── realtime.tsx  # Route-scoped SpacetimeProvider, on-demand createHealthCheckQuery(), SVG <Icon> buttons
 │   ├── components/
-│   │   └── ui/           # Paved Path UI Primitives (Button, Badge, Card, Dialog, Icon, Layout, Typography, Input, NavLink, Boundary, ThemeToggle, Tokens)
-│   │       ├── boundary.tsx     # Systematic AsyncBoundary (Solid 2.0 <Errored> + <Loading>)
+│   │   └── ui/           # Paved Path UI Primitives (native array `class` composition, native `omit`)
+│   │       ├── boundary.tsx     # Self-healing AsyncBoundary (`onRetry` before `reset()`, <Errored> + <Loading>)
+│   │       ├── dialog.tsx       # Ark UI Dialog compound (unstyled CloseTrigger + explicit CloseButton)
 │   │       ├── icon.tsx         # Canonical <Icon size="sm" | "md" | "lg"> SVG primitive
-│   │       ├── input.tsx        # Controlled (`value={val() ?? ""}`) / uncontrolled (`defaultValue`) Input primitive
-│   │       ├── layout.tsx       # Semantic layout primitives (BaseStyleProps + extractStyleProps + `as` prop)
+│   │       ├── input.tsx        # Synchronously routed controlled/uncontrolled Input with InputBase & flush() sync
+│   │       ├── layout.tsx       # Polymorphic Panda JSX wrappers (styled-system/jsx) preserving generic `as` HTML attrs
 │   │       ├── link.tsx         # Accessible SPA NavLink primitive (Solid Router 2.0 useHref + useLinkState)
-│   │       └── theme-toggle.tsx # Zero-flicker pure-CSS `_dark` ThemeToggle with `document.cookie` + `localStorage` sync
-│   ├── lib/              # Single-Responsibility Providers & Service Integrations
-│   │   ├── connect.tsx          # SSR-isolated TransportContext, TransportProvider & typed service clients
+│   │       ├── theme-toggle.tsx # Zero-flicker pure-CSS `_dark` ThemeToggle (aria-label/title + cookie/localStorage sync)
+│   │       ├── tokens.ts        # Pure compile-time closed-world token union types (zero runtime helpers)
+│   │       └── typography.tsx   # Heading, Text (inline span size inheritance), and Code primitives
+│   ├── lib/              # Single-Responsibility Providers, Composable Queries & Adapters
+│   │   ├── connect.tsx          # Tree-scoped TransportProvider (same-origin default `import.meta.env?.VITE_API_URL ?? ""`)
 │   │   ├── index.ts             # Unified lib exports
-│   │   ├── rpc-provider.tsx     # Declarative ConnectRPC async query provider (createMemo + affects/refresh)
-│   │   ├── spacetime.ts         # Dual-mode SpacetimeDB 2.15 adapter (Live subscription + Offline Sandbox)
-│   │   └── spacetime-provider.tsx # Single-responsibility SpacetimeDB Provider with draft store mutations
+│   │   ├── rpc-provider.tsx     # Service-agnostic RpcProvider, useRpcClient(), composable createRpcQuery() (flush + resolve)
+│   │   ├── spacetime.ts         # Hardened Live & Offline adapters (ISO-8601 UTC, disconnect/reconnect reset, typed reducers)
+│   │   └── spacetime-provider.tsx # Route-scoped SpacetimeProvider with useOptionalSpacetime(), draft mutations & error sync
 │   └── schema/           # Schema as Single Source of Truth (SSOT)
-│       ├── connect.ts    # ConnectRPC SystemService, Transport/RPC context & Protobuf contracts
+│       ├── connect.ts    # ConnectRPC SystemService, Transport/RPC context, conditional RpcQueryHandle contracts
 │       ├── index.ts      # Centralized schema export
-│       └── spacetimedb.ts# SpacetimeDB adapter, table, reducer & SpacetimeProvider contracts
-├── tsconfig.json         # Strict TypeScript compiler options
-├── vite.config.ts        # Vite + Panda CSS + Solid 2.0 compiler pipeline (zero legacy aliases)
+│       └── spacetimedb.ts# Unified SpacetimeDB SDK schema()/table()/reducers(), typed SpacetimeReducersClient & derived types
+├── tsconfig.json         # Root TypeScript project references coordinator
+├── tsconfig.app.json     # Isolated client SPA environment (ESNext + DOM, vite/client)
+├── tsconfig.server.json  # Isolated backend & tooling environment (ESNext + bun, strictly zero DOM types)
+├── tsconfig.module.json  # Isolated SpacetimeDB serverless module environment (ESNext, types: [])
+├── vite.config.ts        # Vite + Panda CSS + Solid 2.0 compiler pipeline & same-origin dev proxy
 └── vitest.config.ts      # Vitest + happy-dom + Solid 2.0 diagnostics test config
 ```
 
@@ -144,12 +158,23 @@ bun install
 ```bash
 bun run dev
 ```
-This launches both the ConnectRPC backend ([http://localhost:8080/healthz](http://localhost:8080/healthz)) and the Solid 2.0 Vite client ([http://localhost:3000](http://localhost:3000)) via `scripts/dev.ts`. Solid Reactivity Diagnostics dev panel is available at [http://localhost:3000/__solid/diagnostics](http://localhost:3000/__solid/diagnostics).
+
+This launches both the ConnectRPC backend ([http://localhost:8080/healthz](http://localhost:8080/healthz)) and the Solid 2.0 Vite client ([http://localhost:3000](http://localhost:3000)) via `scripts/dev.ts`, with Vite proxying `/system.v1.SystemService` and `/healthz` transparently on the same origin. Solid Reactivity Diagnostics dev panel is available at [http://localhost:3000/__solid/diagnostics](http://localhost:3000/__solid/diagnostics).
+
+### Local SpacetimeDB Live Module (Optional)
+
+To generate bindings and test real WebSocket synchronization via the "Connect Live" toggle:
+
+```bash
+spacetime start --listen-addr 127.0.0.1:3001
+bun run spacetime:generate
+bun run spacetime:publish
+```
 
 ### Pre-Commit Verification
 
 ```bash
-bun run codegen && bun run check && bun run typecheck && bun run build
+bun run codegen && bun run format && bun run check && bun run typecheck && bun run build
 ```
 
 ---

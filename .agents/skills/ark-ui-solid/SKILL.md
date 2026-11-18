@@ -22,19 +22,27 @@ In this framework, `<Dialog.Portal>` internally binds to Ark UI's `useDialogCont
     <Dialog.Backdrop />
     <Dialog.Positioner>
       <Dialog.Content>
-        <Dialog.CloseTrigger />
+        <Dialog.CloseButton />
         <Dialog.Header>
           <Dialog.Title>Dialog Header</Dialog.Title>
           <Dialog.Description>Dialog subtitle context</Dialog.Description>
         </Dialog.Header>
         <Dialog.Body>Dialog Content Details</Dialog.Body>
         <Dialog.Footer>
-          <Dialog.CloseTrigger variant="outline" size="sm">
-            Cancel
-          </Dialog.CloseTrigger>
-          <Dialog.CloseTrigger variant="solid" size="sm">
-            Confirm
-          </Dialog.CloseTrigger>
+          <Dialog.CloseTrigger
+            asChild={(props) => (
+              <Button {...props()} variant="outline" size="sm">
+                Cancel
+              </Button>
+            )}
+          />
+          <Dialog.CloseTrigger
+            asChild={(props) => (
+              <Button {...props()} variant="solid" size="sm">
+                Confirm
+              </Button>
+            )}
+          />
         </Dialog.Footer>
       </Dialog.Content>
     </Dialog.Positioner>
