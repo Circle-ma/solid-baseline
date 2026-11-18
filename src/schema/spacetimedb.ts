@@ -1,5 +1,7 @@
 import type { Accessor } from "solid-js";
 import {
+  type DbConnectionBuilder,
+  type DbConnectionImpl,
   type Infer,
   type InferTypeOfParams,
   procedures,
@@ -46,8 +48,11 @@ export const SPACETIME_REMOTE_MODULE = {
   ...SpacetimeTablesSchema.schemaType,
   ...SpacetimeReducersSchema.reducersType,
   ...SpacetimeProceduresSchema,
-  versionInfo: { cliVersion: "2.0.0" },
-};
+  versionInfo: { cliVersion: "2.15.0" },
+} as const;
+
+export type SpacetimeDbConnection = DbConnectionImpl<typeof SPACETIME_REMOTE_MODULE>;
+export type SpacetimeDbConnectionBuilder = DbConnectionBuilder<SpacetimeDbConnection>;
 
 // Mathematically inferred directly from SpacetimeDB SDK table & reducer schemas
 export type EventLogRecord = Infer<typeof EventLogTable.rowType>;

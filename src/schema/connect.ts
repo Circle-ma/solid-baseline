@@ -64,7 +64,7 @@ export interface RpcContextValue {
 export interface RpcQueryOptions<TParams, TData> {
   /** Diagnostic attribution name for `@solidjs/diagnostics`. */
   name: string;
-  fetcher: (params: TParams) => Promise<TData>;
+  fetcher: (params: TParams, signal: AbortSignal) => Promise<TData>;
   initialParams?: TParams | null;
 }
 

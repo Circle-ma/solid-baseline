@@ -6,8 +6,9 @@ import {
   createContext,
   createMemo,
   createSignal,
-  flush,
   isPending,
+  onCleanup,
+  onFlush,
   refresh,
   resolve,
   untrack,
@@ -25,7 +26,7 @@ import {
 } from "~/schema/connect";
 import { createServiceClient, TransportProvider, useTransport } from "./connect";
 
-const RpcContext = createContext<RpcContextValue>();
+const RpcContext = createContext<RpcContextValue | undefined>(undefined);
 
 const RpcClientScope: ParentComponent = (props) => {
   const transport = useTransport();
@@ -52,7 +53,7 @@ const RpcClientScope: ParentComponent = (props) => {
 /**
  * Extensible Single-Responsibility ConnectRPC Provider
  *
- * Wraps an SSR-isolated `<TransportProvider>` and provides a lazy per-service typed
+ * Wraps an isolated `<TransportProvider>` and provides a lazy per-service typed
  * client registry. Routes and components instantiate declarative Solid 2.0 async queries
  * on demand via `useRpcClient()` and `createRpcQuery()` instead of binding endpoints
  * eagerly at the application root.
@@ -66,10 +67,22 @@ export const RpcProvider: ParentComponent<RpcProviderProps> = (props) => {
 };
 
 /**
- * Consumes the ConnectRPC context. Throws if invoked outside `<RpcProvider>`.
+ * Returns the enclosing ConnectRPC context if mounted inside `<RpcProvider>`,
+ * or `undefined` otherwise (mirroring `useOptionalSpacetime()`).
+ */
+export function useOptionalRpc(): RpcContextValue | undefined {
+  return useContext(RpcContext);
+}
+
+/**
+ * Consumes the ConnectRPC context. Throws a descriptive error if invoked outside `<RpcProvider>`.
  */
 export function useRpc(): RpcContextValue {
-  return useContext(RpcContext);
+  const ctx = useContext(RpcContext);
+  if (!ctx) {
+    throw new Error("useRpc() must be called inside an <RpcProvider> boundary.");
+  }
+  return ctx;
 }
 
 /**
@@ -83,8 +96,8 @@ export function useRpcClient<T extends DescService>(service: T): Client<T> {
  * Composable Solid 2.0 Declarative Async RPC Query Primitive
  *
  * Uses native `createMemo` returning a Promise + `isPending()` + `affects()` / `refresh()`,
- * and settles parameter transitions deterministically via `flush()` + `resolve()` with
- * zero `Promise.resolve().then(...)` microtask races.
+ * coordinates `execute()` through `onFlush()` + `resolve()` without forced synchronous `flush()`,
+ * and aborts superseded or unmounted in-flight requests via `AbortController` + `onCleanup()`.
  */
 export function createRpcQuery<TParams, TData>(
   options: RpcQueryOptions<TParams, TData>,
@@ -102,7 +115,11 @@ export function createRpcQuery<TParams, TData>(
       if (state === null) {
         return null;
       }
-      return options.fetcher(state.params);
+      const controller = new AbortController();
+      onCleanup(() => {
+        controller.abort();
+      });
+      return options.fetcher(state.params, controller.signal);
     },
     { name: options.name },
   );
@@ -113,8 +130,11 @@ export function createRpcQuery<TParams, TData>(
 
   const execute = ((...args: [] | [TParams]): Promise<TData | null> => {
     setRequestState({ params: args[0] as TParams });
-    flush();
-    return resolve(() => query());
+    return new Promise<TData | null>((resolvePromise, rejectPromise) => {
+      onFlush(() => {
+        resolve(() => query()).then(resolvePromise, rejectPromise);
+      });
+    });
   }) as RpcQueryHandle<TParams, TData>["execute"];
 
   function refreshQuery(): Promise<TData | null> {
@@ -136,6 +156,7 @@ export function createRpcQuery<TParams, TData>(
 
 /**
  * Route/component-scoped declarative `SystemService.CheckHealth` query hook.
+ * Propagates `AbortSignal` into ConnectRPC `checkHealth(req, { signal })`.
  */
 export function createHealthCheckQuery(
   initialRequest?: Partial<HealthCheckRequest> | null,
@@ -145,10 +166,10 @@ export function createHealthCheckQuery(
   return createRpcQuery<Partial<HealthCheckRequest>, HealthCheckQueryResult>({
     name: "rpc-health-query",
     initialParams: initialRequest ?? null,
-    fetcher: async (reqParams) => {
+    fetcher: async (reqParams, signal) => {
       const start = performance.now();
       const req = create(HealthCheckRequestSchema, reqParams);
-      const response = await systemClient.checkHealth(req);
+      const response = await systemClient.checkHealth(req, { signal });
       const latencyMs = Math.round((performance.now() - start) * 10) / 10;
       return { response, latencyMs };
     },

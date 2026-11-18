@@ -18,10 +18,29 @@ import type {
   SpacetimeReducersClient,
   SpacetimeTransactionResult,
 } from "~/schema/spacetimedb";
-import { createSpacetimeAdapter, reconcileTableStore } from "./spacetime";
+import { createShortId, createSpacetimeAdapter, reconcileTableStore } from "./spacetime";
 
 const MAX_EVENT_LOG_RECORDS = 50;
 const GENESIS_TIMESTAMP_ISO = "2026-01-01T00:00:00.000Z";
+
+function createLocalSeedRecords(): EventLogRecord[] {
+  return [
+    {
+      id: "rec_001",
+      sender: "system",
+      action: "INIT_GENESIS",
+      payload: "Database schema initialized from SSOT",
+      timestamp: GENESIS_TIMESTAMP_ISO,
+    },
+    {
+      id: "rec_002",
+      sender: "system",
+      action: "STORE_BOUND",
+      payload: "Fine-grained Solid 2.0 store attached to schema",
+      timestamp: GENESIS_TIMESTAMP_ISO,
+    },
+  ];
+}
 
 const SpacetimeContext = createContext<SpacetimeContextValue | undefined>(undefined);
 
@@ -61,25 +80,13 @@ export const SpacetimeProvider: ParentComponent<SpacetimeProviderProps> = (props
     name: "spacetime-connected",
   });
 
-  // Reactive Table Store initialized with deterministic ISO-8601 UTC SSR seeds
-  const [records, setRecords] = createStore<EventLogRecord[]>([
-    {
-      id: "rec_001",
-      sender: "system",
-      action: "INIT_GENESIS",
-      payload: "Database schema initialized from SSOT",
-      timestamp: GENESIS_TIMESTAMP_ISO,
-    },
-    {
-      id: "rec_002",
-      sender: "system",
-      action: "STORE_BOUND",
-      payload: "Fine-grained Solid 2.0 store attached to schema",
-      timestamp: GENESIS_TIMESTAMP_ISO,
-    },
-  ]);
+  // Live mode starts empty and awaits the authoritative `onSnapshot`; local-cache starts with deterministic seeds.
+  const [records, setRecords] = createStore<EventLogRecord[]>(
+    initialMode === "live" ? [] : createLocalSeedRecords(),
+  );
 
   let cleanupListeners: (() => void) | null = null;
+  let disposed = false;
 
   function bindAdapterListeners(currentAdapter: SpacetimeClientAdapter) {
     cleanupListeners?.();
@@ -149,6 +156,7 @@ export const SpacetimeProvider: ParentComponent<SpacetimeProviderProps> = (props
   bindAdapterListeners(adapter);
 
   onCleanup(() => {
+    disposed = true;
     cleanupListeners?.();
     adapter.disconnect();
   });
@@ -156,12 +164,14 @@ export const SpacetimeProvider: ParentComponent<SpacetimeProviderProps> = (props
   // Connect live adapter after hydration settles, or assign & sync client-local sandbox identity
   onSettled(() => {
     if (initialMode === "live") {
-      void adapter.connect().catch((err) => {
+      const targetAdapter = adapter;
+      void targetAdapter.connect().catch((err) => {
+        if (disposed || adapter !== targetAdapter) return;
         setLastError(err instanceof Error ? err.message : String(err));
         setClientIdentity("disconnected");
       });
     } else if (!props.adapter) {
-      localClientIdentity = `usr_${Math.random().toString(36).substring(2, 8)}`;
+      localClientIdentity = createShortId("usr");
       if (adapter.setIdentity) {
         adapter.setIdentity(localClientIdentity);
       } else {
@@ -174,15 +184,20 @@ export const SpacetimeProvider: ParentComponent<SpacetimeProviderProps> = (props
     name: K,
     params: SpacetimeReducerParamsMap[K],
   ): Promise<SpacetimeTransactionResult> {
+    const targetAdapter = adapter;
     try {
-      const res = await adapter.callReducer(name, params);
-      setLatencyMs(res.executionDurationMs);
-      setLastError(res.status === "failed" ? (res.error ?? "Reducer execution failed") : null);
+      const res = await targetAdapter.callReducer(name, params);
+      if (!disposed && adapter === targetAdapter) {
+        setLatencyMs(res.executionDurationMs);
+        setLastError(res.status === "failed" ? (res.error ?? "Reducer execution failed") : null);
+      }
       return res;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setLatencyMs(null);
-      setLastError(message);
+      if (!disposed && adapter === targetAdapter) {
+        setLatencyMs(null);
+        setLastError(message);
+      }
       return {
         status: "failed",
         executionDurationMs: 0,
@@ -198,21 +213,31 @@ export const SpacetimeProvider: ParentComponent<SpacetimeProviderProps> = (props
   function toggleSimulationMode() {
     const nextMode = untrack(() => connectionMode()) === "live" ? "local-cache" : "live";
     setConnectionMode(nextMode);
+    setLatencyMs(null);
     setLastError(null);
-    adapter.disconnect();
-    adapter = createSpacetimeAdapter(nextMode === "live" ? "live" : "offline-sandbox");
-    setIsConnected(adapter.isConnected);
-    bindAdapterListeners(adapter);
+    const previousAdapter = adapter;
+    const nextAdapter = createSpacetimeAdapter(nextMode === "live" ? "live" : "offline-sandbox");
+    adapter = nextAdapter;
+    previousAdapter.disconnect();
+    setIsConnected(nextAdapter.isConnected);
+    bindAdapterListeners(nextAdapter);
     if (nextMode === "live") {
+      // Clear local-cache seed/simulated rows immediately so live snapshot starts from a clean slate.
+      clearRecords();
       setClientIdentity("connecting...");
-      void adapter.connect().catch((err) => {
+      void nextAdapter.connect().catch((err) => {
+        if (disposed || adapter !== nextAdapter) return;
         setLastError(err instanceof Error ? err.message : String(err));
         setClientIdentity("disconnected");
       });
-    } else if (adapter.setIdentity) {
-      adapter.setIdentity(localClientIdentity);
     } else {
-      setClientIdentity(adapter.identity ?? localClientIdentity);
+      // Re-initialize a clean local dataset when returning to local-cache mode.
+      reconcileTableStore(setRecords, createLocalSeedRecords(), "id");
+      if (nextAdapter.setIdentity) {
+        nextAdapter.setIdentity(localClientIdentity);
+      } else {
+        setClientIdentity(nextAdapter.identity ?? localClientIdentity);
+      }
     }
   }
 

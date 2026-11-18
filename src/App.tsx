@@ -1,14 +1,23 @@
-import { createRouter, defineRoute, defineRoutes } from "@solidjs/router";
+import {
+  createRouter,
+  defineRoute,
+  defineRoutes,
+  intentPreload,
+  pendingLinks,
+} from "@solidjs/router";
 import { lazy } from "solid-js";
+import { css } from "styled-system/css";
 import "./index.css";
 import {
   AsyncBoundary,
   Badge,
   Box,
+  Card,
   Container,
   Divider,
   Heading,
   HStack,
+  Link,
   NavLink,
   Text,
   ThemeToggle,
@@ -19,6 +28,58 @@ import Overview from "~/routes/overview";
 
 const Realtime = lazy(() => import("~/routes/realtime"));
 
+const skipLinkClass = css({
+  position: "fixed",
+  top: "3",
+  left: "3",
+  zIndex: "max",
+  px: "4",
+  py: "2",
+  bg: "accent.default",
+  color: "accent.fg",
+  borderRadius: "l2",
+  textStyle: "sm",
+  fontWeight: "semibold",
+  transform: "translateY(-200%)",
+  _focusVisible: {
+    transform: "translateY(0)",
+    color: "accent.fg",
+  },
+});
+
+const mainFocusClass = css({
+  outline: "none",
+});
+
+function NotFound() {
+  return (
+    <Card.Root variant="elevated">
+      <Card.Header>
+        <HStack gap="2" alignItems="center">
+          <Badge variant="subtle" intent="warning">
+            404
+          </Badge>
+          <Card.Title>Page Not Found</Card.Title>
+        </HStack>
+        <Card.Description>
+          The requested route does not exist in this application shell.
+        </Card.Description>
+      </Card.Header>
+      <Card.Body>
+        <Text size="sm" tone="muted">
+          Check the URL path or return to the overview workspace to continue exploring primitives
+          and realtime telemetry.
+        </Text>
+      </Card.Body>
+      <Card.Footer>
+        <NavLink href={router.paths()} end>
+          Return to Overview
+        </NavLink>
+      </Card.Footer>
+    </Card.Root>
+  );
+}
+
 export const routes = defineRoutes([
   defineRoute({
     path: "/",
@@ -28,15 +89,23 @@ export const routes = defineRoutes([
     path: "/realtime",
     component: Realtime,
   }),
+  defineRoute({
+    path: "*",
+    component: NotFound,
+  }),
 ]);
 
-export const router = createRouter({ routes });
+export const router = createRouter({
+  routes,
+  preloadLinks: intentPreload(),
+  links: pendingLinks,
+});
 
 function NavigationBar() {
   return (
     <HStack
       as="nav"
-      aria-label="Primary navigation"
+      aria-label="Primary"
       gap="2"
       alignItems="center"
       p="1"
@@ -51,7 +120,7 @@ function NavigationBar() {
         </NavLink>
         <NavLink href={router.paths.realtime()}>Realtime & Telemetry</NavLink>
       </HStack>
-      <Divider orientation="vertical" h="4" borderColor="border.subtle" />
+      <Divider orientation="vertical" h="4" color="border.subtle" />
       <ThemeToggle />
     </HStack>
   );
@@ -69,6 +138,9 @@ export default function App() {
           py={{ base: "6", md: "12" }}
           px={{ base: "4", sm: "6", md: "12" }}
         >
+          <Link href="#main-content" class={skipLinkClass}>
+            Skip to main content
+          </Link>
           <Container maxW="4xl" p="0">
             <VStack gap="8" alignItems="stretch">
               {/* Semantic Header */}
@@ -88,16 +160,16 @@ export default function App() {
                 </Text>
               </VStack>
 
-              <Divider borderColor="border.subtle" />
+              <Divider color="border.subtle" />
 
               {/* Routed Page View inside Service-Agnostic RPC Provider & Async Boundary */}
-              <Box as="main">
+              <Box as="main" id="main-content" tabindex={-1} class={mainFocusClass}>
                 <RpcProvider>
                   <AsyncBoundary>{props.children}</AsyncBoundary>
                 </RpcProvider>
               </Box>
 
-              <Divider borderColor="border.subtle" />
+              <Divider color="border.subtle" />
 
               {/* Semantic Footer */}
               <HStack

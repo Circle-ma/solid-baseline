@@ -3,6 +3,7 @@ import { css } from "styled-system/css";
 import {
   AsyncBoundary,
   Badge,
+  type BadgeProps,
   Button,
   Card,
   Code,
@@ -13,7 +14,9 @@ import {
 } from "~/components/ui";
 import {
   createHealthCheckQuery,
+  RpcProvider,
   SpacetimeProvider,
+  useOptionalRpc,
   useOptionalSpacetime,
   useSpacetime,
 } from "~/lib";
@@ -25,6 +28,26 @@ import {
 } from "~/schema";
 
 type HealthQueryHandle = RpcQueryHandle<Partial<HealthCheckRequest>, HealthCheckQueryResult>;
+
+interface HealthStatusPresentation {
+  label: "SERVING" | "NOT_SERVING" | "UNKNOWN" | "UNSPECIFIED";
+  intent: NonNullable<BadgeProps["intent"]>;
+}
+
+function getHealthStatusPresentation(status: HealthCheckStatus): HealthStatusPresentation {
+  switch (status) {
+    case HealthCheckStatus.SERVING:
+      return { label: "SERVING", intent: "success" };
+    case HealthCheckStatus.NOT_SERVING:
+      return { label: "NOT_SERVING", intent: "danger" };
+    case HealthCheckStatus.UNKNOWN:
+      return { label: "UNKNOWN", intent: "warning" };
+    case HealthCheckStatus.UNSPECIFIED:
+      return { label: "UNSPECIFIED", intent: "default" };
+    default:
+      return { label: "UNSPECIFIED", intent: "default" };
+  }
+}
 
 const toolbarBarClass = css({
   justifyContent: "space-between",
@@ -72,24 +95,17 @@ function formatUtcTimestamp(isoTimestamp: string): string {
 }
 
 function HealthCheckStatusBadgeContent(props: { query: HealthQueryHandle }) {
-  const status = createMemo(() => props.query.data()?.response.status ?? null, {
-    name: "rpc-health-status",
-  });
+  const statusPresentation = createMemo(
+    () => {
+      const status = props.query.data()?.response.status;
+      return status !== undefined ? getHealthStatusPresentation(status) : null;
+    },
+    { name: "rpc-health-status" },
+  );
 
   return (
-    <Badge
-      variant="subtle"
-      intent={
-        status() === HealthCheckStatus.SERVING
-          ? "success"
-          : status() !== null
-            ? "danger"
-            : "default"
-      }
-    >
-      {status() !== null
-        ? `Status: ${status() === HealthCheckStatus.SERVING ? "SERVING" : "NOT_SERVING"}`
-        : "Uncalled"}
+    <Badge variant="subtle" intent={statusPresentation()?.intent ?? "default"}>
+      {statusPresentation() ? `Status: ${statusPresentation()?.label}` : "Uncalled"}
     </Badge>
   );
 }
@@ -111,28 +127,27 @@ function HealthCheckStatusBadge(props: { query: HealthQueryHandle }) {
 function HealthCheckResultPanel(props: { query: HealthQueryHandle }) {
   return (
     <Show when={props.query.data()}>
-      {(result) => (
-        <HStack class={resultPanelClass}>
-          <HStack gap="2" alignItems="center">
-            <Badge
-              variant="solid"
-              intent={result().response.status === HealthCheckStatus.SERVING ? "success" : "danger"}
-              size="sm"
-            >
-              {result().response.status === HealthCheckStatus.SERVING ? "SERVING" : "NOT_SERVING"}
-            </Badge>
-            <Text size="xs" tone="muted">
-              Version: {result().response.version}
-            </Text>
-            <Text size="xs" tone="accent" tabular>
-              ({result().latencyMs}ms)
+      {(result) => {
+        const presentation = () => getHealthStatusPresentation(result().response.status);
+        return (
+          <HStack class={resultPanelClass}>
+            <HStack gap="2" alignItems="center">
+              <Badge variant="solid" intent={presentation().intent} size="sm">
+                {presentation().label}
+              </Badge>
+              <Text size="xs" tone="muted">
+                Version: {result().response.version}
+              </Text>
+              <Text size="xs" tone="accent" tabular>
+                ({result().latencyMs}ms)
+              </Text>
+            </HStack>
+            <Text size="xs" tone="muted" tabular>
+              Uptime: {result().response.uptimeSeconds}s
             </Text>
           </HStack>
-          <Text size="xs" tone="muted" tabular>
-            Uptime: {result().response.uptimeSeconds}s
-          </Text>
-        </HStack>
-      )}
+        );
+      }}
     </Show>
   );
 }
@@ -222,6 +237,7 @@ function RealtimeView() {
 
             <VStack
               as="ul"
+              role="list"
               aria-label="Realtime event log"
               aria-live="polite"
               gap="2"
@@ -323,21 +339,29 @@ function RealtimeView() {
 
 /**
  * Route-scoped Realtime & Telemetry view.
- * Self-provisions `<SpacetimeProvider>` at the `/realtime` boundary so routes like `/`
- * incur zero SpacetimeDB initialization overhead, while still honoring an enclosing
- * provider injected by tests.
+ * Self-provisions `<SpacetimeProvider>` and `<RpcProvider>` symmetrically when rendered
+ * standalone, while honoring enclosing providers injected by `App` or unit tests.
  */
 export default function Realtime() {
   const existingSpacetime = useOptionalSpacetime();
-  return (
-    <>
-      {existingSpacetime ? (
-        <RealtimeView />
-      ) : (
+  const existingRpc = useOptionalRpc();
+
+  const content = () => (
+    <Show
+      when={existingSpacetime}
+      fallback={
         <SpacetimeProvider>
           <RealtimeView />
         </SpacetimeProvider>
-      )}
-    </>
+      }
+    >
+      <RealtimeView />
+    </Show>
+  );
+
+  return (
+    <Show when={existingRpc} fallback={<RpcProvider>{content()}</RpcProvider>}>
+      {content()}
+    </Show>
   );
 }

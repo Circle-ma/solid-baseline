@@ -5,6 +5,7 @@ import {
   SPACETIME_REMOTE_MODULE,
   type SpacetimeClientAdapter,
   type SpacetimeConnectionOptions,
+  type SpacetimeDbConnection,
   type SpacetimeDeleteCallback,
   type SpacetimeErrorCallback,
   type SpacetimeEventCallback,
@@ -21,6 +22,121 @@ import {
 
 const DEFAULT_SPACETIMEDB_URI = "ws://localhost:3001";
 const DEFAULT_SPACETIMEDB_NAME = "system_db";
+
+/**
+ * Generates a collision-resistant short identifier using Web Crypto (`crypto.randomUUID`),
+ * falling back safely to `crypto.getRandomValues` or a monotonic counter in restricted runtimes.
+ */
+let fallbackIdCounter = 0;
+export function createShortId(prefix: string): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
+  }
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = new Uint8Array(4);
+    crypto.getRandomValues(bytes);
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return `${prefix}_${hex}`;
+  }
+  fallbackIdCounter += 1;
+  return `${prefix}_${Date.now().toString(36)}_${fallbackIdCounter.toString(36)}`;
+}
+
+/**
+ * Adapts a concrete SpacetimeDB 2.15 `DbConnectionImpl` instance into the
+ * structural `SpacetimeLiveConnectionLike` contract with full compile-time verification.
+ */
+function adaptSpacetimeConnection(conn: SpacetimeDbConnection): SpacetimeLiveConnectionLike {
+  return {
+    db: {
+      event_log: {
+        onInsert: (cb) => conn.db.event_log.onInsert(cb),
+        onUpdate: (cb) => conn.db.event_log.onUpdate(cb),
+        onDelete: (cb) => conn.db.event_log.onDelete(cb),
+        removeOnInsert: (cb) => conn.db.event_log.removeOnInsert(cb),
+        removeOnUpdate: (cb) => conn.db.event_log.removeOnUpdate(cb),
+        removeOnDelete: (cb) => conn.db.event_log.removeOnDelete(cb),
+        iter: () => conn.db.event_log.iter(),
+      },
+    },
+    reducers: {
+      txEvent: (params) => conn.reducers.txEvent(params),
+    },
+    subscriptionBuilder: () => {
+      const subBuilder = conn.subscriptionBuilder();
+      return {
+        onApplied: (cb) => {
+          subBuilder.onApplied((ctx) => {
+            cb({
+              db: {
+                event_log: {
+                  iter: () => ctx.db.event_log.iter(),
+                },
+              },
+            });
+          });
+          return {
+            subscribe: (queries) => subBuilder.subscribe(queries),
+          };
+        },
+      };
+    },
+    disconnect: () => conn.disconnect(),
+  };
+}
+
+/**
+ * Adapts a concrete SpacetimeDB 2.15 `DbConnectionBuilder` into `SpacetimeLiveConnectionBuilderLike`
+ * without unsafe type casts.
+ */
+function createTypedSdkBuilder(): SpacetimeLiveConnectionBuilderLike {
+  const sdkBuilder = new DbConnectionBuilder<SpacetimeDbConnection>(
+    SPACETIME_REMOTE_MODULE,
+    (config) => new DbConnectionImpl(config),
+  );
+
+  const wrapper: SpacetimeLiveConnectionBuilderLike = {
+    withUri(uri) {
+      sdkBuilder.withUri(uri);
+      return wrapper;
+    },
+    withDatabaseName(name) {
+      sdkBuilder.withDatabaseName(name);
+      return wrapper;
+    },
+    withAutomaticReconnect() {
+      sdkBuilder.withAutomaticReconnect();
+      return wrapper;
+    },
+    withToken(token) {
+      sdkBuilder.withToken(token);
+      return wrapper;
+    },
+    onConnect(cb) {
+      sdkBuilder.onConnect((conn, identity) => cb(adaptSpacetimeConnection(conn), identity));
+      return wrapper;
+    },
+    onAutomaticReconnect(cb) {
+      sdkBuilder.onAutomaticReconnect((conn, identity) =>
+        cb(adaptSpacetimeConnection(conn), identity),
+      );
+      return wrapper;
+    },
+    onConnectError(cb) {
+      sdkBuilder.onConnectError((ctx, error) => cb(ctx, error));
+      return wrapper;
+    },
+    onDisconnect(cb) {
+      sdkBuilder.onDisconnect((ctx, error) => cb(ctx, error));
+      return wrapper;
+    },
+    build() {
+      return adaptSpacetimeConnection(sdkBuilder.build());
+    },
+  };
+
+  return wrapper;
+}
 
 /**
  * Offline Sandbox SpacetimeDB Engine
@@ -43,6 +159,8 @@ export class OfflineSandboxSpacetimeAdapter implements SpacetimeClientAdapter {
   readonly reducers: SpacetimeReducersClient = {
     txEvent: (params) => this.executeTxEvent(params),
   };
+
+  constructor(private initialSnapshot?: EventLogRecord[]) {}
 
   get isConnected(): boolean {
     return this.connected;
@@ -107,6 +225,9 @@ export class OfflineSandboxSpacetimeAdapter implements SpacetimeClientAdapter {
     this.setError(null);
     this.notifyConnectionState();
     this.notifyIdentityChange();
+    if (this.initialSnapshot !== undefined) {
+      this.emitSnapshot(this.initialSnapshot);
+    }
   }
 
   disconnect(): void {
@@ -165,6 +286,18 @@ export class OfflineSandboxSpacetimeAdapter implements SpacetimeClientAdapter {
   }
 
   /**
+   * Dispatches a bulk table snapshot in sandbox mode (mirrors Live `onApplied` hydration).
+   */
+  emitSnapshot(rows: EventLogRecord[]): void {
+    const listeners = this.snapshotListeners.get("event_log");
+    if (listeners) {
+      for (const listener of listeners) {
+        listener(rows);
+      }
+    }
+  }
+
+  /**
    * Emits a synthetic update event in sandbox mode (useful for tests and local simulation).
    */
   emitUpdate(record: EventLogRecord): void {
@@ -209,7 +342,7 @@ export class OfflineSandboxSpacetimeAdapter implements SpacetimeClientAdapter {
     }
 
     const newRecord: EventLogRecord = {
-      id: `rec_${Math.random().toString(36).substring(2, 8)}`,
+      id: createShortId("rec"),
       sender: this.currentIdentity ?? "sandbox_node_local",
       action: params.action,
       payload: params.payload,
@@ -252,7 +385,7 @@ function isEventLogRecord(value: unknown): value is EventLogRecord {
  * Connects to a running SpacetimeDB instance via SpacetimeDB SDK 2.15.x,
  * awaits real WebSocket handshake (`onConnect` / `onConnectError`), syncs server Identity,
  * clears stale identity on disconnect, clears errors on automatic reconnect,
- * subscribes to `event_log`, and exposes typed reducer methods.
+ * subscribes to `event_log` (including empty-table snapshot sync), and exposes typed reducer methods.
  */
 export class LiveSpacetimeAdapter implements SpacetimeClientAdapter {
   readonly mode = "live" as const;
@@ -364,7 +497,7 @@ export class LiveSpacetimeAdapter implements SpacetimeClientAdapter {
     conn.db.event_log.onUpdate(handleUpdate);
     conn.db.event_log.onDelete(handleDelete);
 
-    // 2. Subscribe to event_log table and hydrate initial snapshot on apply
+    // 2. Subscribe to event_log table and always hydrate snapshot on apply (including empty `[]`)
     const subscription = conn
       .subscriptionBuilder()
       .onApplied((ctx) => {
@@ -375,7 +508,7 @@ export class LiveSpacetimeAdapter implements SpacetimeClientAdapter {
           }
         }
         const listeners = this.snapshotListeners.get("event_log");
-        if (listeners && initialRows.length > 0) {
+        if (listeners) {
           for (const listener of listeners) {
             listener(initialRows);
           }
@@ -391,13 +524,6 @@ export class LiveSpacetimeAdapter implements SpacetimeClientAdapter {
         subscription.unsubscribe();
       }
     };
-  }
-
-  private createDefaultBuilder(): SpacetimeLiveConnectionBuilderLike {
-    return new DbConnectionBuilder(
-      SPACETIME_REMOTE_MODULE,
-      (config) => new DbConnectionImpl(config),
-    ) as unknown as SpacetimeLiveConnectionBuilderLike;
   }
 
   connect(): Promise<void> {
@@ -436,7 +562,7 @@ export class LiveSpacetimeAdapter implements SpacetimeClientAdapter {
       this.abortPendingConnect = finishReject;
 
       const builder = (
-        this.options?.createBuilder ? this.options.createBuilder() : this.createDefaultBuilder()
+        this.options?.createBuilder ? this.options.createBuilder() : createTypedSdkBuilder()
       )
         .withUri(uri)
         .withDatabaseName(databaseName)
