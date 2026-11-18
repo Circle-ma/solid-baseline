@@ -1,4 +1,4 @@
-# Panda CSS 2.4 Design System Guide (Paved Path Edition)
+# Panda CSS 2.5 Design System Guide (Paved Path Edition)
 
 For design tokens, stacking context, and global invariants, see [AGENTS.md](../../AGENTS.md).
 
@@ -11,7 +11,7 @@ For design tokens, stacking context, and global invariants, see [AGENTS.md](../.
 ## Library-Specific API Patterns
 
 ### 1. Slot Recipes (`sva`) in `panda.config.ts`
-All compound components define their visual anatomy via Panda CSS 2.4 slot recipes:
+All compound components define their visual anatomy via Panda CSS 2.5 slot recipes:
 ```ts
 import { defineSlotRecipe } from "@pandacss/dev";
 

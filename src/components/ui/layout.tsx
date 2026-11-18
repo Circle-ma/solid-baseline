@@ -8,6 +8,7 @@ import {
   type ForegroundToken,
   omitProps,
   type RadiusRailToken,
+  type ShadowRailToken,
   type SpacingRailToken,
   type SurfaceToken,
   toClass,
@@ -56,7 +57,7 @@ export interface BaseStyleProps {
   overflow?: SystemProperties["overflow"];
   overflowX?: SystemProperties["overflowX"];
   overflowY?: SystemProperties["overflowY"];
-  boxShadow?: SystemProperties["boxShadow"];
+  boxShadow?: ConditionalValue<ShadowRailToken>;
   display?: SystemProperties["display"];
   flex?: SystemProperties["flex"];
   flexGrow?: SystemProperties["flexGrow"];
