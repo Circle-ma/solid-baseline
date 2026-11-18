@@ -1,24 +1,23 @@
-# ConnectRPC Integration Guide (Connecting Third-Party APIs like Stripe)
+# ConnectRPC Integration Guide
 
-## Philosophy
+For full architectural invariants and design system rails, see [AGENTS.md](../../AGENTS.md).
+
+## Philosophy & Tooling
 ConnectRPC is a modern, typed RPC framework developed by Buf. It runs over standard HTTP/1.1 and HTTP/2 with JSON or Protobuf payloads, working natively in browsers without gRPC-web proxies.
+- Protobuf Spec: `proto/`
+- Buf Tooling: `buf.yaml`, `buf.gen.yaml`
+- Code Generation: `bunx @bufbuild/buf generate`
 
-## Third-Party Integration Pattern (e.g., Stripe)
-Browsers should NOT make direct calls with backend secret keys.
-Instead:
-1. Define a Protobuf service for operations (e.g. `PaymentService.CreateCheckoutSession`).
-2. Run a backend service (e.g. Bun HTTP / Connect handler) that receives RPC requests, verifies auth, and invokes the official `stripe` Node/Bun SDK.
-3. Return the typed response (`checkout_url`, `session_id`) to the Solid.js frontend.
-
-## Frontend Client Setup
+## Schema SSOT & Client Setup
+All RPC services and payload contracts originate from `.proto` schemas or `src/schema/connect.ts`.
 ```typescript
-import { createClient } from "@connectrpc/connect"
-import { createConnectTransport } from "@connectrpc/connect-web"
-import { PaymentService } from "~/gen/payment/v1/payment_pb"
+import { createClient } from "@connectrpc/connect";
+import { createConnectTransport } from "@connectrpc/connect-web";
+import { SystemService } from "~/gen/system/v1/system_pb";
 
 const transport = createConnectTransport({
   baseUrl: "http://localhost:8080",
-})
+});
 
-export const paymentClient = createClient(PaymentService, transport)
+export const systemClient = createClient(SystemService, transport);
 ```

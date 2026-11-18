@@ -204,8 +204,8 @@ diff --git a/dist/solid.dev.js b/dist/solid.dev.js
 +  return result;
 +}
 +function compatCreateSignal(v, options) {
-+  const isUnnamedThirdParty = !options || (!("name" in options) && !("ownedWrite" in options));
-+  return createSignal$1(v, isUnnamedThirdParty ? { ...options, ownedWrite: true } : options);
++  const isZagOrArk = (!options || (!("name" in options) && !("ownedWrite" in options))) && /@zag-js|@ark-ui/.test(new Error().stack || "");
++  return createSignal$1(v, isZagOrArk ? { ...options, ownedWrite: true } : options);
 +}
 +export { onMount, mergeProps, splitProps, on, compatCreateEffect as createEffect, compatCreateSignal as createSignal };
 diff --git a/dist/solid.js b/dist/solid.js
@@ -307,8 +307,8 @@ diff --git a/dist/solid.js b/dist/solid.js
 +  return result;
 +}
 +function compatCreateSignal(v, options) {
-+  const isUnnamedThirdParty = !options || (!("name" in options) && !("ownedWrite" in options));
-+  return createSignal$1(v, isUnnamedThirdParty ? { ...options, ownedWrite: true } : options);
++  const isZagOrArk = (!options || (!("name" in options) && !("ownedWrite" in options))) && /@zag-js|@ark-ui/.test(new Error().stack || "");
++  return createSignal$1(v, isZagOrArk ? { ...options, ownedWrite: true } : options);
 +}
 +export { onMount, mergeProps, splitProps, on, compatCreateEffect as createEffect, compatCreateSignal as createSignal };
 diff --git a/package.json b/package.json

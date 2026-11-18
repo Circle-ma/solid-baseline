@@ -10,10 +10,13 @@ const buttonRecipe = defineRecipe({
     borderRadius: "md",
     fontWeight: "medium",
     cursor: "pointer",
-    transitionProperty: "colors, box-shadow",
+    transitionProperty: "colors, box-shadow, transform",
     transitionDuration: "fast",
     outline: "none",
     userSelect: "none",
+    _active: {
+      transform: "scale(0.98)",
+    },
     _focusVisible: {
       outlineWidth: "2px",
       outlineStyle: "solid",
@@ -264,6 +267,8 @@ const textRecipe = defineRecipe({
   variants: {
     variant: {
       heading: {
+        fontFamily: "heading",
+        fontOpticalSizing: "auto",
         fontWeight: "bold",
         letterSpacing: "tight",
         lineHeight: "tight",
@@ -443,7 +448,10 @@ const cardSlotRecipe = defineSlotRecipe({
       borderStyle: "solid",
       borderColor: "border.subtle",
       bg: "bg.default",
-      boxShadow: "sm",
+      boxShadow: {
+        base: "sm",
+        _dark: "inset 0 1px 0 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.4)",
+      },
     },
     header: {
       display: "flex",
@@ -500,6 +508,12 @@ const dialogSlotRecipe = defineSlotRecipe({
       zIndex: "overlay",
       backdropBlur: "sm",
       bg: "bg.backdrop",
+      "&[data-state='open']": {
+        animation: "overlayFadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      "&[data-state='closed']": {
+        animation: "overlayFadeOut 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+      },
     },
     positioner: {
       position: "fixed",
@@ -521,11 +535,20 @@ const dialogSlotRecipe = defineSlotRecipe({
       borderWidth: "1px",
       borderStyle: "solid",
       borderColor: "border.subtle",
-      boxShadow: "xl",
+      boxShadow: {
+        base: "xl",
+        _dark: "inset 0 1px 0 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.4)",
+      },
       display: "flex",
       flexDirection: "column",
       gap: "5",
       color: "fg.default",
+      "&[data-state='open']": {
+        animation: "dialogScaleIn 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      "&[data-state='closed']": {
+        animation: "dialogScaleOut 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+      },
     },
     header: {
       display: "flex",
@@ -607,7 +630,38 @@ export default defineConfig({
         card: cardSlotRecipe,
         dialog: dialogSlotRecipe,
       },
+      keyframes: {
+        overlayFadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        overlayFadeOut: {
+          "0%": { opacity: "1" },
+          "100%": { opacity: "0" },
+        },
+        dialogScaleIn: {
+          "0%": { opacity: "0", transform: "scale(0.96) translateY(8px)" },
+          "100%": { opacity: "1", transform: "scale(1) translateY(0)" },
+        },
+        dialogScaleOut: {
+          "0%": { opacity: "1", transform: "scale(1) translateY(0)" },
+          "100%": { opacity: "0", transform: "scale(0.96) translateY(8px)" },
+        },
+      },
       tokens: {
+        fonts: {
+          heading: {
+            value:
+              "'Google Sans Flex', 'MiSans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif",
+          },
+          body: {
+            value:
+              "'Geist', 'MiSans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif",
+          },
+          mono: {
+            value: "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+          },
+        },
         sizes: {
           full: { value: "100%" },
           screen: { value: "100vw" },
@@ -973,6 +1027,17 @@ export default defineConfig({
         },
       },
     ],
+  },
+  globalCss: {
+    body: {
+      fontFamily: "body",
+      WebkitFontSmoothing: "antialiased",
+      MozOsxFontSmoothing: "grayscale",
+    },
+    "h1, h2, h3, h4, h5, h6": {
+      fontFamily: "heading",
+      fontOpticalSizing: "auto",
+    },
   },
   include: ["./src/**/*.{ts,tsx}"],
   exclude: [],

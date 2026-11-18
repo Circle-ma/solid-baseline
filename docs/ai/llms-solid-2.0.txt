@@ -1,26 +1,55 @@
 # Solid.js 2.0 AI Instructions & API Guide
 
-## Core Principles
-1. **Async-first Reactivity**: Computations and `createMemo` can return Promises directly. The reactive graph handles pending/suspension natively.
-2. **Boundary Replacement**:
-   - Replace `<Suspense>` with `<Loading fallback={<Spinner />}>`.
-   - Replace `<ErrorBoundary>` with `<Errored fallback={(err, reset) => <ErrorView error={err} onRetry={reset} />}>`.
-3. **Props are read, never destructured**:
-   - Incorrect: `function Button({ label, onClick }) { ... }`
-   - Correct: `function Button(props) { return <button onClick={props.onClick}>{props.label}</button>; }`
-4. **Split `createEffect`**:
-   - Takes two functions: compute (tracks dependencies), then apply (runs side effect).
-   - `createEffect(() => count(), v => { el.title = v; });`
-5. **Draft Stores**:
-   - `setStore(draft => { draft.user.name = "New Name"; });`
-   - No `produce` wrapper needed.
-6. **Optimistic Updates & Actions**:
-   - In transition handlers, use `createOptimistic(false, { name: "..." })` and `action(function* () { ... })` to immediately acknowledge the hold before the first `yield`.
-7. **Diagnostic Signal Attribution**:
-   - Always name reactive primitives: `createSignal(0, { name: "count" })`, `createMemo(fn, { name: "double" })`.
-8. **SSR-Safe Context & State**:
-   - Never declare module-scope mutable signals or stores. Mount state via Context Providers (`<Context value={...}>` + `useContext(Context)`).
-9. **Deterministic Hydration**:
-   - Use deterministic seed values during initial server rendering. Generate dynamic client values only inside `onSettled` or actions.
-10. **Prop Forwarding**:
-    - Use `omitProps(props, "class", "children", "style")` from `~/components/ui/tokens` instead of manual splitting or casting `"style" as any`.
+For full architectural invariants and design system rails, see [AGENTS.md](../../AGENTS.md).
+
+## Core API Patterns
+
+### 1. Async-First Reactivity & Computations
+Computations and `createMemo` can return Promises directly. The reactive graph natively handles transitions without tearing:
+```tsx
+const data = createMemo(async () => {
+  const res = await fetch(`/api/user/${id()}`);
+  return res.json();
+}, { name: "user-data" });
+```
+
+### 2. Boundary Replacement
+- **Loading fallback**: Replace Solid 1.x `<Suspense>` with `<Loading on={...} fallback={<Spinner />}>`.
+- **Error containment**: Replace `<ErrorBoundary>` with `<Errored fallback={(err, reset) => <ErrorView error={err()} onRetry={reset} />}>`.
+
+### 3. Split `createEffect`
+Takes two functions: compute (tracks dependencies), then apply (runs side effect without re-tracking):
+```tsx
+createEffect(
+  () => count(),
+  (val) => {
+    document.title = `Count: ${val}`;
+  }
+);
+```
+
+### 4. Direct Draft Stores
+Store updates execute directly against the draft proxy without requiring external `produce`:
+```tsx
+const [store, setStore] = createStore({ users: [] });
+setStore((draft) => {
+  draft.users.push({ id: "1", name: "Alex" });
+});
+```
+
+### 5. Transition Actions & Optimistic State
+In transition handlers, acknowledge holds immediately with `createOptimistic` before the first async `yield`:
+```tsx
+const [isPending, setIsPending] = createOptimistic(false, { name: "save-pending" });
+const saveAction = action(function* (data) {
+  setIsPending(true);
+  const result = yield api.save(data);
+  return result;
+});
+```
+
+### 6. Solid 2.0 Anti-Patterns
+- ❌ **Destructuring Props**: `function Button({ label, onClick })` loses reactivity. Always use `props.label`.
+- ❌ **Passing Accessors to Primitives**: `<Input value={name} />` is invalid. Pass evaluated signal: `<Input value={name()} />`.
+- ❌ **Legacy 1.x APIs**: `createResource`, `createComputed`, `onMount`, `splitProps`, `mergeProps`, and `.Provider` are removed in 2.0.
+- ❌ **Web Primitives from `solid-js`**: Import `Dynamic`, `Portal`, and `isServer` from `@solidjs/web`.

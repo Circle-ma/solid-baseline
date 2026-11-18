@@ -10,6 +10,7 @@ import {
   HStack,
   NavLink,
   Text,
+  ThemeToggle,
   VStack,
 } from "~/components/ui";
 import { TelemetryProvider } from "~/lib";
@@ -31,9 +32,21 @@ export const Router = createRouter({ routes });
 
 function NavigationBar() {
   return (
-    <HStack gap="1" p="1" bg="bg.subtle" borderRadius="md" w="fit">
-      <NavLink href="/">Overview & Primitives</NavLink>
-      <NavLink href="/realtime">Realtime & Telemetry</NavLink>
+    <HStack
+      gap="2"
+      alignItems="center"
+      p="1"
+      bg="bg.subtle"
+      borderRadius="md"
+      borderWidth="1px"
+      borderColor="border.subtle"
+    >
+      <HStack gap="1" alignItems="center">
+        <NavLink href="/">Overview & Primitives</NavLink>
+        <NavLink href="/realtime">Realtime & Telemetry</NavLink>
+      </HStack>
+      <Divider orientation="vertical" h="4" borderColor="border.subtle" />
+      <ThemeToggle />
     </HStack>
   );
 }

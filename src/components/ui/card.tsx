@@ -3,6 +3,8 @@ import { cx } from "styled-system/css";
 import { card } from "styled-system/recipes";
 import { omitProps, toClass } from "./tokens";
 
+const cardStyles = card();
+
 /**
  * Root Card Container
  * Encapsulated container with pre-configured padding, borders, and elevation.
@@ -10,9 +12,8 @@ import { omitProps, toClass } from "./tokens";
  */
 export const CardRoot: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = card();
   return (
-    <div {...rest} class={cx(styles.root, toClass(props.class))}>
+    <div {...rest} class={cx(cardStyles.root, toClass(props.class))}>
       {props.children}
     </div>
   );
@@ -24,9 +25,8 @@ export const CardRoot: ParentComponent<Omit<ComponentProps<"div">, "style">> = (
  */
 export const CardHeader: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = card();
   return (
-    <div {...rest} class={cx(styles.header, toClass(props.class))}>
+    <div {...rest} class={cx(cardStyles.header, toClass(props.class))}>
       {props.children}
     </div>
   );
@@ -38,9 +38,8 @@ export const CardHeader: ParentComponent<Omit<ComponentProps<"div">, "style">> =
  */
 export const CardTitle: ParentComponent<Omit<ComponentProps<"h3">, "style">> = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = card();
   return (
-    <h3 {...rest} class={cx(styles.title, toClass(props.class))}>
+    <h3 {...rest} class={cx(cardStyles.title, toClass(props.class))}>
       {props.children}
     </h3>
   );
@@ -52,9 +51,8 @@ export const CardTitle: ParentComponent<Omit<ComponentProps<"h3">, "style">> = (
  */
 export const CardDescription: ParentComponent<Omit<ComponentProps<"p">, "style">> = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = card();
   return (
-    <p {...rest} class={cx(styles.description, toClass(props.class))}>
+    <p {...rest} class={cx(cardStyles.description, toClass(props.class))}>
       {props.children}
     </p>
   );
@@ -66,9 +64,8 @@ export const CardDescription: ParentComponent<Omit<ComponentProps<"p">, "style">
  */
 export const CardBody: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = card();
   return (
-    <div {...rest} class={cx(styles.body, toClass(props.class))}>
+    <div {...rest} class={cx(cardStyles.body, toClass(props.class))}>
       {props.children}
     </div>
   );
@@ -80,9 +77,8 @@ export const CardBody: ParentComponent<Omit<ComponentProps<"div">, "style">> = (
  */
 export const CardFooter: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = card();
   return (
-    <div {...rest} class={cx(styles.footer, toClass(props.class))}>
+    <div {...rest} class={cx(cardStyles.footer, toClass(props.class))}>
       {props.children}
     </div>
   );

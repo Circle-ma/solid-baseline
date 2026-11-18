@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import type { ParentComponent } from "solid-js";
-import { Errored, Loading } from "solid-js";
+import { Errored, Loading, untrack } from "solid-js";
 import { Button } from "./button";
 import { Card } from "./card";
 import { VStack } from "./layout";
@@ -35,10 +35,13 @@ function DefaultLoadingFallback() {
 export const AsyncBoundary: ParentComponent<AsyncBoundaryProps> = (props) => {
   return (
     <Errored
-      fallback={(err, reset) =>
-        props.errorFallback ? (
-          props.errorFallback(err, reset)
-        ) : (
+      fallback={(err, reset) => {
+        if (props.errorFallback) {
+          return props.errorFallback(err, reset);
+        }
+        const raw = untrack(() => err());
+        const errMsg = String(raw instanceof Error ? raw.message : raw);
+        return (
           <Card.Root>
             <Card.Header>
               <Card.Title>Application Error</Card.Title>
@@ -52,7 +55,7 @@ export const AsyncBoundary: ParentComponent<AsyncBoundaryProps> = (props) => {
                   Error Details:
                 </Text>
                 <Code size="sm" tone="danger">
-                  {String(err() instanceof Error ? (err() as Error).message : err())}
+                  {errMsg}
                 </Code>
               </VStack>
             </Card.Body>
@@ -62,8 +65,8 @@ export const AsyncBoundary: ParentComponent<AsyncBoundaryProps> = (props) => {
               </Button>
             </Card.Footer>
           </Card.Root>
-        )
-      }
+        );
+      }}
     >
       <Loading on={props.on} fallback={props.loadingFallback ?? <DefaultLoadingFallback />}>
         {props.children}

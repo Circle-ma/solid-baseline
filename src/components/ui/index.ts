@@ -6,5 +6,6 @@ export * from "./dialog";
 export * from "./input";
 export * from "./layout";
 export * from "./link";
+export * from "./theme-toggle";
 export * from "./tokens";
 export * from "./typography";

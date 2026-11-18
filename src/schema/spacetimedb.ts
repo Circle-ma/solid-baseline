@@ -53,3 +53,34 @@ export type InferReducerParams<T extends { parameters: Record<string, { type: Co
 
 // Inferred Reducer Parameters Type from Schema (100% mathematically derived)
 export type TxReducerParams = InferReducerParams<typeof TxReducerSchema>;
+
+/**
+ * Connection options for SpacetimeDB client connections.
+ */
+export interface SpacetimeConnectionOptions {
+  uri?: string;
+  databaseName?: string;
+  token?: string;
+}
+
+export type SpacetimeEventCallback<T> = (row: T) => void;
+export type SpacetimeDeleteCallback = (rowId: string) => void;
+export type SpacetimeTransactionStatus = "committed" | "failed";
+
+export interface SpacetimeTransactionResult {
+  status: SpacetimeTransactionStatus;
+  txHash: string;
+  executionDurationMs: number;
+}
+
+export interface SpacetimeClientAdapter {
+  readonly mode: "live" | "offline-sandbox";
+  readonly isConnected: boolean;
+  connect(): Promise<void>;
+  disconnect(): void;
+  onConnectionStateChange(cb: (connected: boolean) => void): () => void;
+  onInsert(tableName: string, callback: SpacetimeEventCallback<EventLogRecord>): () => void;
+  onUpdate(tableName: string, callback: SpacetimeEventCallback<EventLogRecord>): () => void;
+  onDelete(tableName: string, callback: SpacetimeDeleteCallback): () => void;
+  callReducer(params: TxReducerParams): Promise<SpacetimeTransactionResult>;
+}

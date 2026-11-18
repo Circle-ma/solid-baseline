@@ -3,37 +3,17 @@
 > Solid 2.0 + Ark UI + Panda CSS 2.4 + SpacetimeDB + ConnectRPC Starter
 > 2026 Modern SPA Foundation (Paved Path Edition)
 
-## Architecture Overview
-- Runtime: Bun
-- Architecture: Solid 2.0 Start-Mode SPA (`Document.tsx` + `App.tsx`, 1-boolean SSR readiness)
-- Reactivity: Solid.js 2.0 (Zero VDOM, fine-grained signals)
-- UI Primitives: Ark UI 5.x (Zag.js state machines) & Panda CSS native recipes
-- Styling: Panda CSS with `strictTokens: true` & `strictPropertyValues: true`
-- Realtime Database: SpacetimeDB 2.x
-- RPC Transport: ConnectRPC
-- Lint & Format: Oxlint, Biome 2.6, and Architectural Rails Validator (12 Invariants via `scripts/check-rails.ts`)
-
-## Design System Rails (鋪鐵軌而非設陷阱)
-1. **Zero Inline Styles & Zero Magic Numbers**:
-   - `style={{ ... }}` is strictly forbidden and rejected at compile time.
-   - `padding: "13px"` and `color: "#3b82f6"` are rejected at compile time.
-   - All properties must use tokens from `~/components/ui/tokens` (including surfaces, foregrounds, borders, accents, status tokens, and z-index hierarchy).
-2. **宣告 Margin 死亡 (Declare Margin Dead)**:
-   - Zero `margin`, `mt`, `mb`. Spacing is exclusively orchestrated via parent `<Container>`, `<VStack>`, `<HStack>`, `<Grid>` using `gap`.
-3. **Compound Invariants**:
-   - `<Card.Root>` and `<Dialog.Content>` encapsulate their own padding, gaps, and borders.
-4. **Typography & Primitives First**:
-   - Never use raw `<p>`, `<span>`, `<h1>`, or `<button>`. Use Systematic UI primitives (`<Heading>`, `<Text>`, `<Code>`, `<Button>`, `<Badge>`, `<Input>`, `<NavLink>`, `<AsyncBoundary>`, `<Card>`, `<Dialog>`).
-5. **Schema SSOT**:
-   - All database, reducer, and API types derive from `src/schema/`.
-6. **Zero Type Escape Hatches**:
-   - `as any`, `@ts-ignore`, and `@ts-expect-error` are strictly banned.
-7. **Diagnostic Signal Attribution**:
-   - Always name reactive primitives: `createSignal(val, { name: "..." })`, `createMemo(fn, { name: "..." })`.
+## Architecture Constitution
+All engineering rules, design system invariants, and Solid 2.0 contracts are unified in **[AGENTS.md](../../AGENTS.md)**.
+Refer to `AGENTS.md` for:
+- 14 AST-enforced architectural invariants (`scripts/check-rails.ts`).
+- Closed-world token dictionary (`~/components/ui/tokens`).
+- Systematic UI primitives and layout containers.
+- Solid 2.0 reactive invariants and component guidelines.
 
 ## Deep-Dive Knowledge Links
-- [Panda CSS 2.4 Design System Guide](docs/ai/llms-panda-css.txt)
-- [Ark UI Headless Components & State Machine Guide](docs/ai/llms-ark-ui.txt)
-- [Solid.js 2.0 Core Guide](docs/ai/llms-solid-2.0.txt)
-- [SpacetimeDB Realtime Guide](docs/ai/llms-spacetimedb.txt)
-- [ConnectRPC Guide](docs/ai/llms-connect-rpc.txt)
+- [Panda CSS 2.4 Design System Guide](llms-panda-css.txt)
+- [Ark UI Headless Components & State Machine Guide](llms-ark-ui.txt)
+- [Solid.js 2.0 Core Guide](llms-solid-2.0.txt)
+- [SpacetimeDB Realtime Guide](llms-spacetimedb.txt)
+- [ConnectRPC Guide](llms-connect-rpc.txt)

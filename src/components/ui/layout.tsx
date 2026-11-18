@@ -44,6 +44,9 @@ export interface BoxProps extends Omit<ComponentProps<"div">, "style"> {
   flex?: SystemProperties["flex"];
   flexGrow?: SystemProperties["flexGrow"];
   flexShrink?: SystemProperties["flexShrink"];
+  ml?: "auto";
+  mr?: "auto";
+  mx?: "auto";
 }
 
 export const Box: ParentComponent<BoxProps> = (props) => {
@@ -79,6 +82,9 @@ export const Box: ParentComponent<BoxProps> = (props) => {
     "flex",
     "flexGrow",
     "flexShrink",
+    "ml",
+    "mr",
+    "mx",
     "class",
     "children",
     "style",
@@ -118,6 +124,9 @@ export const Box: ParentComponent<BoxProps> = (props) => {
           flex: props.flex,
           flexGrow: props.flexGrow,
           flexShrink: props.flexShrink,
+          ml: props.ml,
+          mr: props.mr,
+          mx: props.mx,
           boxSizing: "border-box",
         }),
         toClass(props.class),
@@ -184,6 +193,9 @@ export interface VStackProps extends Omit<ComponentProps<"div">, "style"> {
   flex?: SystemProperties["flex"];
   flexGrow?: SystemProperties["flexGrow"];
   flexShrink?: SystemProperties["flexShrink"];
+  ml?: "auto";
+  mr?: "auto";
+  mx?: "auto";
 }
 
 export const VStack: ParentComponent<VStackProps> = (props) => {
@@ -216,6 +228,9 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
     "flex",
     "flexGrow",
     "flexShrink",
+    "ml",
+    "mr",
+    "mx",
     "class",
     "children",
     "style",
@@ -252,6 +267,9 @@ export const VStack: ParentComponent<VStackProps> = (props) => {
           flex: props.flex,
           flexGrow: props.flexGrow,
           flexShrink: props.flexShrink,
+          ml: props.ml,
+          mr: props.mr,
+          mx: props.mx,
         }),
         toClass(props.class),
       )}
@@ -290,6 +308,9 @@ export interface HStackProps extends Omit<ComponentProps<"div">, "style"> {
   flex?: SystemProperties["flex"];
   flexGrow?: SystemProperties["flexGrow"];
   flexShrink?: SystemProperties["flexShrink"];
+  ml?: "auto";
+  mr?: "auto";
+  mx?: "auto";
 }
 
 export const HStack: ParentComponent<HStackProps> = (props) => {
@@ -323,6 +344,9 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
     "flex",
     "flexGrow",
     "flexShrink",
+    "ml",
+    "mr",
+    "mx",
     "class",
     "children",
     "style",
@@ -360,6 +384,9 @@ export const HStack: ParentComponent<HStackProps> = (props) => {
           flex: props.flex,
           flexGrow: props.flexGrow,
           flexShrink: props.flexShrink,
+          ml: props.ml,
+          mr: props.mr,
+          mx: props.mx,
         }),
         toClass(props.class),
       )}
@@ -431,6 +458,7 @@ export interface DividerProps extends Omit<ComponentProps<"hr">, "style"> {
   thickness?: SystemProperties["borderWidth"];
   color?: BorderColorToken;
   borderColor?: BorderColorToken;
+  h?: SystemProperties["height"];
 }
 
 export const Divider: ParentComponent<DividerProps> = (props) => {
@@ -440,6 +468,7 @@ export const Divider: ParentComponent<DividerProps> = (props) => {
     "thickness",
     "color",
     "borderColor",
+    "h",
     "class",
     "children",
     "style",
@@ -452,6 +481,7 @@ export const Divider: ParentComponent<DividerProps> = (props) => {
           orientation: props.orientation ?? "horizontal",
           thickness: props.thickness ?? "1px",
           color: props.borderColor ?? props.color ?? "border.subtle",
+          h: props.h,
         }),
         toClass(props.class),
       )}

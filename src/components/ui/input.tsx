@@ -1,5 +1,5 @@
 import type { Component, ComponentProps } from "solid-js";
-import { createEffect, createSignal, untrack } from "solid-js";
+import { createSignal } from "solid-js";
 import { cx } from "styled-system/css";
 import { type InputVariant, input } from "styled-system/recipes";
 import { omitProps, toClass } from "./tokens";
@@ -12,8 +12,8 @@ export interface InputProps extends Omit<ComponentProps<"input">, "style" | "siz
 
 /**
  * Systematic Input Primitive
- * Implements Solid 2.0 draft signal synchronization to prevent [UNCOMMITTED_INPUT_OVERWRITTEN] diagnostics.
- * Styled via Panda CSS input recipe with closed-world tokens.
+ * Uses Solid 2.0 native derived signal paradigm to eliminate EFFECT_RELAY_TEAR
+ * and owned writes while keeping typing and external value changes in sync.
  */
 export const Input: Component<InputProps> = (props) => {
   const rest = omitProps(
@@ -26,17 +26,10 @@ export const Input: Component<InputProps> = (props) => {
     "onInput",
     "style",
   );
-  const [draft, setDraft] = createSignal(
-    untrack(() => props.value ?? ""),
-    { name: "input-draft" },
-  );
 
-  createEffect(
-    () => props.value,
-    (v) => {
-      setDraft(v ?? "");
-    },
-  );
+  const [draft, setDraft] = createSignal(() => props.value ?? "", {
+    name: "input-draft",
+  });
 
   return (
     <input

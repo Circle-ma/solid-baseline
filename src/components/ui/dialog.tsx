@@ -6,7 +6,14 @@ import { cx } from "styled-system/css";
 import { type ButtonVariant, button, dialog } from "styled-system/recipes";
 import { omitProps, toClass } from "./tokens";
 
-export const DialogRoot = ArkDialog.Root;
+const dialogStyles = dialog();
+
+export const DialogRoot: ParentComponent<Omit<ComponentProps<typeof ArkDialog.Root>, "style">> = (
+  props,
+) => {
+  const rest = omitProps(props, "children", "style");
+  return <ArkDialog.Root {...rest}>{props.children}</ArkDialog.Root>;
+};
 
 export interface DialogTriggerProps
   extends Omit<ComponentProps<typeof ArkDialog.Trigger>, "style"> {
@@ -35,9 +42,8 @@ export const DialogBackdrop: ParentComponent<
   Omit<ComponentProps<typeof ArkDialog.Backdrop>, "style">
 > = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = dialog();
   return (
-    <ArkDialog.Backdrop {...rest} class={cx(styles.backdrop, toClass(props.class))}>
+    <ArkDialog.Backdrop {...rest} class={cx(dialogStyles.backdrop, toClass(props.class))}>
       {props.children}
     </ArkDialog.Backdrop>
   );
@@ -47,9 +53,8 @@ export const DialogPositioner: ParentComponent<
   Omit<ComponentProps<typeof ArkDialog.Positioner>, "style">
 > = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = dialog();
   return (
-    <ArkDialog.Positioner {...rest} class={cx(styles.positioner, toClass(props.class))}>
+    <ArkDialog.Positioner {...rest} class={cx(dialogStyles.positioner, toClass(props.class))}>
       {props.children}
     </ArkDialog.Positioner>
   );
@@ -59,9 +64,8 @@ export const DialogContent: ParentComponent<
   Omit<ComponentProps<typeof ArkDialog.Content>, "style">
 > = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = dialog();
   return (
-    <ArkDialog.Content {...rest} class={cx(styles.content, toClass(props.class))}>
+    <ArkDialog.Content {...rest} class={cx(dialogStyles.content, toClass(props.class))}>
       {props.children}
     </ArkDialog.Content>
   );
@@ -75,7 +79,6 @@ export interface DialogCloseTriggerProps
 
 export const DialogCloseTrigger: ParentComponent<DialogCloseTriggerProps> = (props) => {
   const rest = omitProps(props, "variant", "size", "class", "children", "style");
-  const styles = dialog();
 
   const isButtonStyled = () => Boolean(props.variant || props.size || props.children);
 
@@ -85,7 +88,7 @@ export const DialogCloseTrigger: ParentComponent<DialogCloseTriggerProps> = (pro
       class={cx(
         isButtonStyled()
           ? button({ variant: props.variant ?? "outline", size: props.size ?? "sm" })
-          : styles.closeTrigger,
+          : dialogStyles.closeTrigger,
         toClass(props.class),
       )}
       aria-label={!props.children ? (props["aria-label"] ?? "Close dialog") : props["aria-label"]}
@@ -113,9 +116,8 @@ export const DialogCloseTrigger: ParentComponent<DialogCloseTriggerProps> = (pro
 
 export const DialogHeader: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = dialog();
   return (
-    <div {...rest} class={cx(styles.header, toClass(props.class))}>
+    <div {...rest} class={cx(dialogStyles.header, toClass(props.class))}>
       {props.children}
     </div>
   );
@@ -125,9 +127,8 @@ export const DialogTitle: ParentComponent<Omit<ComponentProps<typeof ArkDialog.T
   props,
 ) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = dialog();
   return (
-    <ArkDialog.Title {...rest} class={cx(styles.title, toClass(props.class))}>
+    <ArkDialog.Title {...rest} class={cx(dialogStyles.title, toClass(props.class))}>
       {props.children}
     </ArkDialog.Title>
   );
@@ -137,9 +138,8 @@ export const DialogDescription: ParentComponent<
   Omit<ComponentProps<typeof ArkDialog.Description>, "style">
 > = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = dialog();
   return (
-    <ArkDialog.Description {...rest} class={cx(styles.description, toClass(props.class))}>
+    <ArkDialog.Description {...rest} class={cx(dialogStyles.description, toClass(props.class))}>
       {props.children}
     </ArkDialog.Description>
   );
@@ -147,9 +147,8 @@ export const DialogDescription: ParentComponent<
 
 export const DialogBody: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = dialog();
   return (
-    <div {...rest} class={cx(styles.body, toClass(props.class))}>
+    <div {...rest} class={cx(dialogStyles.body, toClass(props.class))}>
       {props.children}
     </div>
   );
@@ -157,9 +156,8 @@ export const DialogBody: ParentComponent<Omit<ComponentProps<"div">, "style">> =
 
 export const DialogFooter: ParentComponent<Omit<ComponentProps<"div">, "style">> = (props) => {
   const rest = omitProps(props, "class", "children", "style");
-  const styles = dialog();
   return (
-    <div {...rest} class={cx(styles.footer, toClass(props.class))}>
+    <div {...rest} class={cx(dialogStyles.footer, toClass(props.class))}>
       {props.children}
     </div>
   );

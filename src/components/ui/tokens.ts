@@ -1,4 +1,11 @@
 import { omit } from "solid-js";
+import type {
+  ColorToken,
+  RadiusToken,
+  ShadowToken,
+  SpacingToken,
+  ZIndexToken,
+} from "styled-system/types/tokens";
 
 /**
  * Standard 4px / 8px Spacing Grid Rail
@@ -21,10 +28,11 @@ export const SPACING_SCALE = [
   "20", // 80px
 ] as const;
 
-export type SpacingRailToken = (typeof SPACING_SCALE)[number];
+export type SpacingRailToken = Extract<SpacingToken, (typeof SPACING_SCALE)[number]>;
 
 /**
  * Canonical Semantic Surfaces
+ * Mapped directly from Panda CSS ColorToken closed world.
  */
 export const SURFACES = {
   canvas: "bg.canvas",
@@ -33,61 +41,41 @@ export const SURFACES = {
   subtle: "bg.subtle",
   muted: "bg.muted",
   backdrop: "bg.backdrop",
-} as const;
+} as const satisfies Record<string, ColorToken>;
 
-export type SurfaceToken =
-  | "transparent"
-  | "bg.canvas"
-  | "bg.default"
-  | "bg.elevated"
-  | "bg.subtle"
-  | "bg.muted"
-  | "bg.backdrop"
-  | "success.subtle"
-  | "danger.subtle"
-  | "warning.subtle"
-  | "info.subtle";
+export type SurfaceToken = Extract<ColorToken, "transparent" | `bg.${string}` | `${string}.subtle`>;
 
 /**
  * Canonical Semantic Foregrounds
+ * Mapped directly from Panda CSS ColorToken closed world.
  */
 export const FOREGROUNDS = {
   default: "fg.default",
   muted: "fg.muted",
   subtle: "fg.subtle",
-} as const;
+} as const satisfies Record<string, ColorToken>;
 
-export type ForegroundToken =
-  | "fg.default"
-  | "fg.muted"
-  | "fg.subtle"
-  | "accent.default"
-  | "accent.fg"
-  | "success.text"
-  | "danger.text"
-  | "warning.text"
-  | "info.text";
+export type ForegroundToken = Extract<
+  ColorToken,
+  `fg.${string}` | `accent.${string}` | `${string}.text`
+>;
 
 /**
  * Canonical Semantic Borders
+ * Mapped directly from Panda CSS ColorToken closed world.
  */
 export const BORDERS = {
   subtle: "border.subtle",
   default: "border.default",
-} as const;
+} as const satisfies Record<string, ColorToken>;
 
-export type BorderColorToken =
-  | "border.subtle"
-  | "border.default"
-  | "success.border"
-  | "danger.border"
-  | "warning.border"
-  | "info.border";
+export type BorderColorToken = Extract<ColorToken, `border.${string}` | `${string}.border`>;
 
 /**
  * Concentric Radii Scale
+ * Derived directly from Panda CSS RadiusToken SSOT.
  */
-export type RadiusRailToken = "none" | "sm" | "md" | "l1" | "l2" | "l3" | "full";
+export type RadiusRailToken = RadiusToken;
 
 /**
  * Canonical Semantic Accents
@@ -96,7 +84,7 @@ export const ACCENTS = {
   default: "accent.default",
   emphasized: "accent.emphasized",
   fg: "accent.fg",
-} as const;
+} as const satisfies Record<string, ColorToken>;
 
 /**
  * Systematic Status & Feedback Color Tokens
@@ -136,7 +124,7 @@ export const STATUS = {
     border: "info.border",
     text: "info.text",
   },
-} as const;
+} as const satisfies Record<string, Record<string, ColorToken>>;
 
 /**
  * Closed-World Stacking Context (Z-Index) Scale
@@ -156,9 +144,11 @@ export const Z_INDEX = {
   toast: "toast", // 1600
   tooltip: "tooltip", // 1700
   max: "max", // 9999
-} as const;
+} as const satisfies Record<string, ZIndexToken>;
 
-export type ZIndexRailToken = (typeof Z_INDEX)[keyof typeof Z_INDEX];
+export type ZIndexRailToken = ZIndexToken;
+
+export type ShadowRailToken = ShadowToken;
 
 /**
  * Safe class extractor that converts Solid JSX class values to string | undefined for cx.

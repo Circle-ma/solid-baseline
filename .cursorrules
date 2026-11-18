@@ -1,102 +1,27 @@
-# Modern Fullstack AI Assistant Directives (2026 Paved Path Edition)
+# Cursor AI Assistant Directives (2026 Paved Path Edition)
 
-You are an expert fullstack engineer working in this codebase.
-You MUST adhere strictly to the following architectural rules:
+You are an expert engineer working in this codebase.
 
-## 1. Toolchain & Runtime
-- **Architecture**: Solid 2.0 Start-Mode SPA (`start: true, ssr: false, diagnostics: true`). Follows the official 2.0 unified convention (`src/Document.tsx` shell + `src/App.tsx` root), enabling instant 1-boolean migration to streaming SSR (`ssr: true`).
-- **Runtime**: Bun (`bun`, `bunx`). Do not emit `npm`, `yarn`, or `npx`.
-- **Linter & Guardrails**: Oxlint (`oxlint src`), Biome (`biome check .`), and the automated rail validator (`bun run scripts/check-rails.ts`). Run all with `bun run check`.
-- **Formatter**: Biome (`biome format --write .`). Never add Prettier configs.
-- **Type Checking**: TypeScript (`bun run typecheck` / `tsc --noEmit`).
+## 1. Single Source of Truth: Architecture Constitution
+The file `AGENTS.md` at the workspace root is the **SOLE ARCHITECTURAL CONSTITUTION** for this project.
+- You MUST read and strictly adhere to all architectural invariants, design token rules, and Solid 2.0 contracts defined in `AGENTS.md`.
+- Never guess styles, schemas, or reactive patterns. Always follow the closed-world rails established in `AGENTS.md`.
 
-## 2. Solid.js 2.0 Core Rules
-- **Props**: Always read props directly as `props.value`. NEVER destructure props (`function C({ name })` is BANNED).
-- **Props Forwarding**: Use `omitProps(props, ...keys)` with rest parameters (`const rest = omitProps(props, "class", "children", "style")`). Casting `"style" as any` is strictly BANNED.
-- **Signal Attribution**: Always provide `{ name: "..." }` when creating signals and memos for `@solidjs/diagnostics`.
-- **SSR-Safe State & Context**: Never declare module-scope mutable signals or stores. Mount state via default-less Context Providers (`TelemetryProvider` + `useTelemetry`).
-- **Deterministic Hydration**: Use deterministic seed values during initial server rendering (`timestamp: "00:00:00"`, `clientIdentity: "usr_local_node_01"`). Generate dynamic client values only inside `onSettled` or actions.
-- **Actions & Optimistic State**: In transition handlers, use `createOptimistic(false, { name: "..." })` and `action(function* () { setFlag(true); ... })` to immediately acknowledge the hold before the first `yield`.
-- **Reactivity**: Computations and `createMemo` can return Promises natively. Do NOT use `createResource`.
-- **Boundaries**: Use `<Loading>` for async fallback states and `<Errored>` for error boundaries. Do NOT use `<Suspense>` or `<ErrorBoundary>`.
-- **Effects**: `createEffect` takes two functions: `createEffect(() => dep(), val => { ... })`.
-- **Stores**: Modify stores directly inside the draft setter: `setStore(draft => { draft.prop = val; })`.
-- **Web Package**: Import Dynamic, Portal, and isServer from `@solidjs/web`, not `solid-js/web`.
+## 2. Toolchain & Command Protocols
+- **Runtime**: Strictly `bun` and `bunx`. Never invoke `npm`, `npx`, `yarn`, or `pnpm`.
+- **Pre-commit / Verification Mandate**: After making any modifications, you MUST run:
+  ```bash
+  bun run check && bun run typecheck
+  ```
+  Both must exit cleanly with zero errors before concluding your work.
+- **Formatting**: `bun run format` (`biome format --write .`). Never add Prettier.
+- **Code Generation**: `bun run codegen` (`panda codegen --spec`).
 
-## 3. The Paved Path UI Manifesto: 鋪鐵軌而非設陷阱 (Lay the Rails, Don't Set Traps)
-- **Zero Inline Styles (`style={{ ... }}` is BANNED)**:
-  - All UI primitives strip the `style` prop at compile time (`Omit<ComponentProps<...>, "style">`).
-  - Passing `style={{ ... }}` triggers a TypeScript compilation error.
-  - An automated pre-commit / CI script (`bun run scripts/check-rails.ts`) scans the codebase and fails if any inline style is detected.
-- **Zero Magic Numbers & Zero Hex Colors**:
-  - `strictTokens: true` and `strictPropertyValues: true` are enforced by the TypeScript compiler.
-  - NEVER write magic pixel values like `padding: "13px"` or `gap: "17px"`.
-  - NEVER write hardcoded hex/RGB colors like `color: "#ef4444"`, `color: "#10b981"`, or `bg: "rgba(...)"`.
-  - ALWAYS use semantic tokens from `~/components/ui/tokens`:
-    - Spacing: `"0"`, `"1"` (4px), `"1.5"` (6px), `"2"` (8px), `"2.5"` (10px), `"3"` (12px), `"4"` (16px), `"5"` (20px), `"6"` (24px), `"8"` (32px), `"10"` (40px), `"12"` (48px).
-    - Surfaces: `"bg.canvas"`, `"bg.default"`, `"bg.elevated"`, `"bg.subtle"`, `"bg.muted"`, `"bg.backdrop"`.
-    - Foregrounds: `"fg.default"`, `"fg.muted"`, `"fg.subtle"`.
-    - Borders: `"border.subtle"`, `"border.default"`.
-    - Accents: `"accent.default"`, `"accent.emphasized"`, `"accent.fg"`.
-    - Status & Feedback:
-      - Success: `"success.default"`, `"success.subtle"`, `"success.fg"`, `"success.border"`, `"success.text"`.
-      - Danger: `"danger.default"`, `"danger.subtle"`, `"danger.fg"`, `"danger.border"`, `"danger.text"`.
-      - Warning: `"warning.default"`, `"warning.subtle"`, `"warning.fg"`, `"warning.border"`, `"warning.text"`.
-      - Info: `"info.default"`, `"info.subtle"`, `"info.fg"`, `"info.border"`, `"info.text"`.
-- **Stacking Context (Z-Index Hierarchy)**:
-  - Arbitrary numbers like `z-index: 60` or `50` are strictly BANNED.
-  - Use tokens: `"hide"` (-1), `"base"` (0), `"docked"` (10), `"dropdown"` (1000), `"sticky"` (1100), `"banner"` (1200), `"overlay"` (1300), `"modal"` (1400), `"popover"` (1500), `"toast"` (1600), `"tooltip"` (1700), `"max"` (9999).
-- **宣告 Margin 死亡 (Declare Margin Dead)**:
-  - Components MUST NEVER control their outside spacing. Zero `margin`, `mt`, `mb`, `ml`, `mr`, `mx`, `my`.
-  - Spacing between siblings is 100% orchestrated by parent layout containers using `gap`.
-- **佈局只走鐵軌容器 (Layout Rails via `~/components/ui`)**:
-  - Use verified Solid 2.0 layout containers: `<Container>`, `<VStack>`, `<HStack>`, `<Grid>`, `<Box>`, `<Divider>`.
-  - Layout containers support systematic props: `position`, `zIndex`, `minH`, `maxH`, `w`, `p`, `px`, `py`, `bg`, `color`, `borderWidth`, `borderColor`, `borderRadius`, `overflowY`, `boxShadow`.
-  - NEVER import layout primitives from `styled-system/jsx` (Panda's factory is Solid 1.x-only).
-- **複合組件的「不變量骨架」(Compound Component Invariants)**:
-  - `<Card.Root>`: Invariant 24px padding (`p="6"`), `gap="6"`, border, and shadow.
-  - `<Dialog.Content>`: Invariant 24px padding (`p="6"`), `gap="5"`, `maxW="md"`, subtle border, elevation shadow.
-  - NEVER manually wrap an outer `<VStack>` inside `<Dialog.Content>` or `<Card.Root>`.
-- **Systematic UI Primitives**:
-  - Raw unstyled HTML tags outside UI primitives are strictly BANNED.
-  - `<Button>`: Variants: `"solid"`, `"outline"`, `"ghost"`, `"subtle"`, `"danger"`, `"success"`.
-  - `<Badge>`: Variants: `"subtle"`, `"solid"`, `"outline"` with `intent="default" | "success" | "danger" | "warning" | "info"`.
-  - `<Input>`: Systematic input primitive with Solid 2.0 draft synchronization (`createSignal` + `createEffect`), preventing `[UNCOMMITTED_INPUT_OVERWRITTEN]` diagnostics.
-  - `<NavLink>`: Accessible navigation link primitive with active route matching and focus-visible rings.
-  - `<AsyncBoundary>`: Systematic boundary coordinating Solid 2.0 `<Errored>` (with `err()` getter and `reset` action) and `<Loading on={...}>` with token-based fallback surfaces.
-  - `<Heading>`, `<Text>`, `<Code>`: Zero-runtime typography primitives powered by Panda recipes.
-    - Variants: `tone` (`"default"`, `"muted"`, `"subtle"`, `"accent"`, `"success"`, `"danger"`, `"warning"`, `"info"`), `weight` (`"normal"`, `"medium"`, `"semibold"`, `"bold"`), `leading` (`"none"`, `"tight"`, `"snug"`, `"normal"`, `"relaxed"`), `tracking` (`"tighter"`, `"tight"`, `"normal"`, `"wide"`, `"wider"`, `"widest"`).
-    - Use `tabular` boolean prop for numbers and timestamps to prevent horizontal layout shift.
-    - Legacy props `color=`, `fontWeight=`, `lineHeight=`, and `letterSpacing=` are strictly banned in favor of recipe variants.
-- **Zero Tailwind**: NEVER use Tailwind CSS classes (`flex`, `p-4`, `bg-blue-500` etc. are forbidden).
-
-## 4. Headless UI (Ark UI + Panda CSS Recipes)
-- **Autonomous Modal Slots**:
-  - `<Dialog.Header>`: Tight column (`gap="1.5"`), with `pr="8"` reserved for the top-right X button.
-  - `<Dialog.Title>`: Semibold high-contrast heading (`textStyle="lg"`).
-  - `<Dialog.Description>`: Muted secondary context (`textStyle="sm"`, `color="fg.muted"`).
-  - `<Dialog.Body>`: High-contrast primary message region (`gap="4"`).
-  - `<Dialog.Footer>`: Right-aligned action container (`justifyContent="flex-end"`, `gap="3"`, `pt="2"`).
-  - `<Dialog.CloseTrigger>`: Dual-mode. Without children, renders the top-right X icon button. With children, renders custom action buttons.
-- **Modal Lifecycle**: Modals operate headlessly via Zag.js state machines. `<Dialog.Portal>` internally encapsulates `<Show when={!isServer && dialog().open}>` and `<SolidPortal>`, guaranteeing 100% clean physical DOM teardown on ESC or dismissal with zero ghost overlays and zero signal boilerplate. Style triggers with typesafe variants (`<Dialog.Trigger variant="outline">`) or `<Button>`. NEVER pass boolean `asChild`.
-
-## 5. Backend & Data Layer: Schema 為單一真理來源 (Schema as SSOT)
-- **Ban Arbitrary API Types**: NEVER handcraft loose, arbitrary `interface Record { ... }` or `type ApiPayload = { ... }` in component or service files.
-- **Schema as Single Source of Truth**: All database tables, reducers, and RPC contracts MUST be formally defined in `src/schema/` (or generated from `spacetime generate` / `.proto`).
-- **SpacetimeDB**: Real-time client synchronization runs through WebSocket subscriptions with fine-grained Solid 2.0 store bindings. Local in-memory cache acts as fallback.
-- **ConnectRPC**: Use type-safe Connect clients (`@connectrpc/connect-web`) with schemas for microservices and third-party APIs.
-
-## 6. Automated Rail Gatekeeper (`scripts/check-rails.ts`)
-The CI check enforces 12 architectural invariants:
-1. `INLINE_STYLE_FORBIDDEN`: No `style=` attributes anywhere.
-2. `HEX_COLOR_HARDCODED`: No `#hex` colors anywhere.
-3. `RAW_COLOR_FUNCTION`: No `rgb()`, `rgba()`, `hsl()`, `hsla()`, `oklch()` in `src/`.
-4. `ARBITRARY_Z_INDEX`: No numeric `zIndex` values.
-5. `MARGIN_PROP_FORBIDDEN`: Global ban on `margin`, `m`, `mt`, `mb`, `ml`, `mr`, `mx`, `my`, `marginTop`, `marginBottom`, `marginLeft`, `marginRight`, `marginInline`, `marginBlock` props.
-6. `RAW_DOM_ELEMENT_BANNED`: Outside `src/components/ui/` and `src/Document.tsx`, strictly forbid raw `<div`, `<span`, `<p`, `<h1`..`<h6`, `<button`, `<a `, `<input`, `<textarea`, `<select`, `<label`, `<hr`, `<svg`, `<table`.
-7. `ADHOC_CSS_IN_FEATURE_BANNED`: Outside `src/components/ui/`, strictly forbid importing from `"styled-system/css"`, `"styled-system/patterns"`, or `"styled-system/jsx"`.
-8. `UNSCOPED_TYPE_DEFINITION`: In `src/routes/` and `src/lib/`, forbid declaring ad-hoc `interface` or `type` definitions (all contracts and context types must live in `src/schema/` or `src/components/ui/`).
-9. `TYPE_ESCAPE_HATCH_BANNED`: Forbid `as any`, `@ts-ignore`, and `@ts-expect-error` across `src/`.
-10. `LEGACY_SOLID_API_BANNED`: Forbid legacy Solid 1.x APIs (`onMount`, `splitProps`, `mergeProps`, `createResource`, `createComputed`, `Suspense`, `SuspenseList`, `ErrorBoundary`, `Index`, `batch`, `.Provider`).
-11. `UNNAMED_REACTIVE_PRIMITIVE`: Enforce diagnostic name attribute (e.g. `{ name: "..." }`) within 4 lines on `createSignal`, `createMemo`, and `createOptimistic`.
-12. `LEGACY_TYPOGRAPHY_PROP_BANNED`: Forbid legacy props (`color=`, `fontWeight=`, `lineHeight=`, `letterSpacing=`) on `<Text>`, `<Heading>`, `<Code>`.
+## 3. Immediate Invariant Reminders
+- Never use inline `style={{ ... }}`.
+- Never write hardcoded colors (`#hex`, `rgb(...)`) or magic numbers; use tokens from `~/components/ui/tokens`.
+- Never destructure component props (`function Comp({ prop })` is strictly forbidden; always use `props.prop`).
+- Spacing between siblings belongs exclusively to layout containers (`<Container>`, `<VStack>`, `<HStack>`, `<Grid>`) via `gap`. Margin props are banned (except `ml="auto"`, `mr="auto"`, `mx="auto"` for flex alignment).
+- Raw unstyled HTML elements outside `src/components/ui/` are banned; use Systematic UI primitives.
+- Never use type escape hatches (`as any`, `@ts-ignore`, `@ts-expect-error`).
+- Tables, reducers, and RPC types must derive from `src/schema/`.

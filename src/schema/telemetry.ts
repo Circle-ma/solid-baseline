@@ -21,5 +21,5 @@ export interface TelemetryContextValue {
   isRpcPending: Accessor<boolean>;
   rpcResponse: Accessor<HealthCheckResponse | null>;
   rpcLatencyMs: Accessor<number | null>;
-  checkSystemHealth: (request?: HealthCheckRequest) => Promise<HealthCheckResponse>;
+  checkSystemHealth: (request?: Partial<HealthCheckRequest>) => Promise<HealthCheckResponse>;
 }

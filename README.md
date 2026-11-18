@@ -17,83 +17,51 @@ A high-performance, type-safe, zero-tech-debt starter framework engineered for t
 | **Styling**      | [Panda CSS](https://panda-css.com/)                     | `2.4.x`      | Zero-runtime build-time CSS-in-JS with strict tokens & native slot recipes.   |
 | **Linter**       | [Oxlint](https://oxc.rs/)                               | `1.90.x`     | Rust-based ultra-fast linter with Solid 2.0 reactivity rules.                 |
 | **Formatter**    | [Biome](https://biomejs.dev/)                           | `2.6.x`      | Blazing-fast Rust formatter and import organizer (replaces Prettier).         |
-| **Realtime DB**  | [SpacetimeDB](https://spacetimedb.com/)                 | `2.13.x`     | In-memory relational database with WebSocket client cache synchronization.    |
+| **Realtime DB**  | [SpacetimeDB](https://spacetimedb.com/)                 | `2.14.x`     | In-memory relational database with WebSocket client cache synchronization.    |
 | **Typed RPC**    | [ConnectRPC](https://connectrpc.com/)                   | `2.3.x`      | Type-safe Protobuf and JSON RPC for microservices & payment APIs.             |
+| **Testing**      | [Vitest](https://vitest.dev/) + `@solidjs/diagnostics`  | `5.1.x`      | Automated reactive graph diagnostics (zero waste, zero silent holds).         |
 
 ---
 
-## 🏛️ Architecture & Golden Rules
+## 🏛️ Architecture & Single Source of Truth (SSOT)
 
-### 1. Solid.js 2.0 Reactive Contract
+All architectural invariants, Solid 2.0 reactive contracts, design system closed-world tokens, and automated gatekeeper rules are strictly governed by **[AGENTS.md](AGENTS.md)**.
 
-- **Never Destructure Props**: Always access props directly as `props.name`. Destructuring strips reactivity.
-- **Pass Values, Not Accessors**: Pass `value={count()}`, not `value={count}`.
-- **Split `createEffect`**: Effects take two functions: `createEffect(() => trackSignal(), val => { /* side effect */ })`.
-- **Draft Stores**: Modify stores inside draft closures: `setStore(draft => { draft.user.name = "Alex"; })`.
-- **Boundaries**: Use `<Loading>` for async boundaries and `<Errored>` for error handling. (No `<Suspense>` or `<ErrorBoundary>`).
+Engineers and AI agents must treat `AGENTS.md` as the single architectural constitution:
+- **Design System Rails**: Closed-world token dictionary (`~/components/ui/tokens`), zero inline styles, zero hardcoded colors, zero magic numbers, and container-first spatial rhythm (`gap`).
+- **Solid.js 2.0 Contract**: No prop destructuring (`props.prop`), diagnostic signal attribution (`{ name: "..." }`), split `createEffect`, draft stores, and `<Loading>`/`<Errored>` boundaries.
+- **Headless UI Primitives**: Autonomous Zag.js state machines via Ark UI, encapsulated `<Dialog.Portal>` lifecycles, and no boolean `asChild`.
+- **Data Layer SSOT**: Formal database, reducer, and RPC contracts in `src/schema/` (derived via ConnectRPC Protobuf and SpacetimeDB 2.x).
+- **Automated Rail Gatekeeper**: 14 AST-level architectural invariants verified via `bun run check:rails` (`scripts/check-rails.ts`).
 
-### 2. Universal Solid Router 2.0
+---
 
-- **Declarative Router Setup**: Defined using `defineRoutes` and `createRouter`:
+## 🛠️ Verification & Toolchain Commands
 
-  ```tsx
-  export const routes = defineRoutes([
-    defineRoute({ path: "/", component: Overview }),
-    defineRoute({ path: "/realtime", component: Realtime }),
-  ]);
-  export const Router = createRouter({ routes });
-  ```
-- **Typed Paths**: Use `Router.paths.realtime()` for compile-time verified URL generation.
-- **Reactive Hooks**: Leverage `useLocation()`, `useNavigate()`, and `useMatch()` for route tracking.
+All verification, compilation, and code generation protocols run through `bun`:
 
-### 3. Layout & Styling: Paved Path Design Rails
+```bash
+# Code generation (Design system spec + Panda CSS)
+bun run codegen
 
-- **Zero Inline Styles & Zero Hardcoding**: `style={{ ... }}` is strictly prohibited and stripped from all UI primitives at the type level. Hardcoded hex colors (`#ef4444`, `#10b981`), raw `rgba()`, and arbitrary magic z-index numbers are rejected at compile time and verified via the automated rail validator (`scripts/check-rails.ts`).
-- **Complete Closed-World Design Tokens**:
-  - **Surfaces & Borders**: `"bg.canvas"`, `"bg.default"`, `"bg.elevated"`, `"bg.subtle"`, `"bg.muted"`, `"bg.backdrop"`, `"border.subtle"`, `"border.default"`.
-  - **Status & Feedback**: Full semantic tokens for `"success"`, `"danger"`, `"warning"`, and `"info"` covering defaults, subtle surfaces, foregrounds, borders, and text.
-  - **Stacking Context (Z-Index Scale)**: `"hide"` (-1), `"base"` (0), `"docked"` (10), `"dropdown"` (1000), `"sticky"` (1100), `"banner"` (1200), `"overlay"` (1300), `"modal"` (1400), `"popover"` (1500), `"toast"` (1600), `"tooltip"` (1700), `"max"` (9999).
-- **Container-First Layout**: Sibling spacing MUST be handled by framework containers (`<Container>`, `<VStack>`, `<HStack>`, `<Grid>`) using `gap`. Layout primitives support systematic props (`position`, `zIndex`, `borderWidth`, `borderColor`, `overflowY`, `boxShadow`).
-- **Layout Alignment**: While sibling push-margins are banned, layout alignment margins (`m="auto"`, `ml="auto"`) are permitted for flex positioning.
-- **Typography & Primitives First**: Do NOT use raw unstyled `<p>`, `<span>`, `<h1>`-`<h6>`, or `<button>` tags. Use Systematic UI Primitives from `~/components/ui`:
-  - `<Heading>`, `<Text>`, `<Code>`: Zero-runtime typography primitives powered by Panda recipes (`tone`, `weight`, `leading`, `tracking`, `tabular`).
-  - `<Button>`: Systematic button with variants (`solid`, `outline`, `ghost`, `subtle`, `danger`, `success`) and sizes.
-  - `<Badge>`: Status badges with semantic intents (`default`, `success`, `danger`, `warning`, `info`).
-  - `<Input>`: Draft-synchronized input primitive (`boundary.tsx`) preventing `[UNCOMMITTED_INPUT_OVERWRITTEN]` diagnostics, with `onValueChange`.
-  - `<NavLink>`: Accessible navigation links with active route memoization (`nav-link-active`) and native recipe.
-  - `<AsyncBoundary>`: Resilient boundary coordinating Solid 2.0 `<Errored>` and `<Loading>` with token-based fallback surfaces.
-- **Native Slot Recipes**: Components bind cleanly to Panda CSS 2.4 slot recipes (`card`, `dialog`, `button`, `badge`, `text`, `input`, `navLink`) without redundant duplicate inline overrides.
-- **Strict Tokens**: Compiler enforces `strictTokens: true` and `strictPropertyValues: true`. No magic pixel values or random hex colors.
+# Full static & dynamic verification pipeline (Oxlint + Biome + AST check-rails + Vitest)
+bun run check
 
-### 4. Headless UI (Ark UI + Zag.js)
+# Run reactive diagnostics test suite
+bun run test
 
-- **Autonomous Modal Lifecycle**: Modals operate headlessly via Zag.js state machines. `<Dialog.Portal>` internally binds to `useDialogContext()` and `<Show when={dialog().open}>`, guaranteeing 100% clean physical DOM teardown on ESC or dismissal with zero ghost overlays and zero signal boilerplate.
-- **No Boolean `asChild`**: Ark UI Solid components are already polymorphic elements. Style them with typesafe variants: `<Dialog.Trigger variant="outline">` or use `<Button>`.
-- **DOM Utilities**: Import `<Portal>` from `@solidjs/web`, not `solid-js`.
+# TypeScript type verification
+bun run typecheck
 
-### 5. Data Layer: Schema as Single Source of Truth (SSOT)
+# Code formatting
+bun run format
 
-- **Ban Arbitrary API Types**: NEVER handcraft loose, arbitrary `interface Record { ... }` or `type ApiPayload = { ... }` in component or service files.
-- **Schema as Single Source of Truth**: All database tables, reducers, and RPC contracts MUST be formally defined in `src/schema/` (or generated from `spacetime generate` / `buf generate`). Contracts for telemetry and logging reside in `src/schema/telemetry.ts`.
-- **SpacetimeDB**: Real-time client synchronization runs through WebSocket subscriptions with fine-grained Solid 2.0 store bindings. Local in-memory cache acts as fallback.
-- **ConnectRPC**: Use type-safe Connect clients (`@connectrpc/connect-web`) with typed request/response contracts for backend microservices and payment gateways.
-- **Unified Telemetry**: Mounted via `TelemetryProvider` and `useTelemetry` in `src/lib/telemetry.tsx`, enforcing SSR-safe context, deterministic hydration seeds, and diagnostic signal attribution.
+# Concurrent fullstack development server (ConnectRPC :8080 + Vite :3000)
+bun run dev
 
-### 6. Automated Rail Gatekeeper (`scripts/check-rails.ts`)
-
-Enforces 12 architectural invariants across `src/`:
-1. `INLINE_STYLE_FORBIDDEN`: No `style=` attributes anywhere.
-2. `HEX_COLOR_HARDCODED`: No `#hex` colors anywhere.
-3. `RAW_COLOR_FUNCTION`: No `rgb()`, `rgba()`, `hsl()`, `hsla()`, `oklch()` in `src/`.
-4. `ARBITRARY_Z_INDEX`: No numeric `zIndex` values.
-5. `MARGIN_PROP_FORBIDDEN`: Global ban on `margin`, `m`, `mt`, `mb`, `ml`, `mr`, `mx`, `my`, `marginTop`, `marginBottom`, `marginLeft`, `marginRight`, `marginInline`, `marginBlock` props.
-6. `RAW_DOM_ELEMENT_BANNED`: Outside `src/components/ui/` and `src/Document.tsx`, strictly forbid raw `<div`, `<span`, `<p`, `<h1`..`<h6`, `<button`, `<a `, `<input`, `<textarea`, `<select`, `<label`, `<hr`, `<svg`, `<table`.
-7. `ADHOC_CSS_IN_FEATURE_BANNED`: Outside `src/components/ui/`, strictly forbid importing from `"styled-system/css"`, `"styled-system/patterns"`, or `"styled-system/jsx"`.
-8. `UNSCOPED_TYPE_DEFINITION`: In `src/routes/` and `src/lib/`, forbid declaring ad-hoc `interface` or `type` definitions.
-9. `TYPE_ESCAPE_HATCH_BANNED`: Forbid `as any`, `@ts-ignore`, and `@ts-expect-error` across `src/`.
-10. `LEGACY_SOLID_API_BANNED`: Forbid legacy Solid 1.x APIs (`onMount`, `splitProps`, `mergeProps`, `createResource`, `createComputed`, `Suspense`, `SuspenseList`, `ErrorBoundary`, `Index`, `batch`, `.Provider`).
-11. `UNNAMED_REACTIVE_PRIMITIVE`: Enforce diagnostic name attribute (`{ name: "..." }`) within 4 lines on `createSignal`, `createMemo`, and `createOptimistic`.
-12. `LEGACY_TYPOGRAPHY_PROP_BANNED`: Forbid legacy props (`color=`, `fontWeight=`, `lineHeight=`, `letterSpacing=`) on `<Text>`, `<Heading>`, `<Code>`.
+# Production build
+bun run build
+```
 
 ---
 
@@ -103,41 +71,54 @@ Enforces 12 architectural invariants across `src/`:
 ├── .agents/
 │   └── skills/           # Curated AI Agent Skills (Solid 2.0, Panda CSS, Ark UI, etc.)
 ├── .mcp.json             # Model Context Protocol configuration
-├── .cursorrules          # Strict 2026 architectural directives for AI agents
-├── AGENTS.md             # Standard agent guidelines and migration contracts
+├── .cursorrules          # Strict 2026 architectural directives pointing to AGENTS.md
+├── AGENTS.md             # Single Source of Truth (SSOT) architecture constitution
 ├── biome.json            # Biome 2.6 formatting & import organization rules
+├── buf.yaml              # Buf Protobuf module configuration
+├── buf.gen.yaml          # Buf codegen configuration (Protobuf-ES v2 -> src/gen/)
 ├── docs/
-│   └── ai/               # Machine-readable documentation (llms.txt index)
-├── oxlint.config.ts      # Oxlint configuration with Solid 2.0 linting plugin
+│   └── ai/               # Machine-readable library guides & llms.txt index
+├── oxlint.config.ts      # Oxlint configuration with Solid 2.0 v2-strict rules
 ├── package.json          # Modern dependency declarations & scripts
 ├── panda.config.ts       # Panda CSS 2.4 tokens, semantic tokens, and slot recipes
-├── patches/              # Upstream compatibility patch (Ark UI 5.x <-> Solid 2.0 bridge)
+├── patches/              # Scoped compatibility bridge (Ark UI 5.x <-> Solid 2.0)
+├── proto/                # Protobuf SSOT definitions (system/v1, payment/v1)
+├── public/
+│   └── MisansTC VF.ttf   # Local variable CJK font loaded on-demand via unicode-range
 ├── scripts/
-│   └── check-rails.ts    # 12 Automated architectural invariant rail gatekeeper
+│   ├── check-rails.ts    # 14 AST & TypeChecker architectural rail invariants
+│   └── dev.ts            # Concurrent dev server orchestrator (Bun.spawn, clean SIGINT/SIGTERM)
+├── server/
+│   └── index.ts          # ConnectRPC backend server (Bun.serve, CORS, /healthz, graceful shutdown)
 ├── src/
-│   ├── Document.tsx      # Official Solid 2.0 Document HTML Shell
-│   ├── App.tsx           # Canonical foundation starter application (Router + Layout)
-│   ├── index.css         # Panda CSS cascade layer imports
+│   ├── Document.tsx      # Official Solid 2.0 Document HTML Shell (Google Fonts + zero-FOUC theme)
+│   ├── App.tsx           # Canonical foundation starter application (Router + Layout + NavigationBar)
+│   ├── index.css         # Panda CSS cascade layers & local MiSans TC VF @font-face
+│   ├── __tests__/
+│   │   └── diagnostics.test.tsx # 5-scenario @solidjs/diagnostics + Vitest verification matrix
+│   ├── gen/              # Buf-generated Protobuf & ConnectRPC typed schemas
 │   ├── routes/           # Declarative page views
 │   │   ├── overview.tsx  # Reactivity counter & Ark UI modal dialog primitives
 │   │   └── realtime.tsx  # SpacetimeDB engine & ConnectRPC telemetry views
 │   ├── components/
-│   │   └── ui/           # Paved Path UI Primitives (Button, Badge, Card, Dialog, Layout, Typography, Input, NavLink, Boundary, Tokens)
-│   │       ├── boundary.tsx  # Systematic AsyncBoundary (Solid 2.0 <Errored> + <Loading>)
-│   │       ├── input.tsx     # Draft-synchronized Input primitive with onValueChange
-│   │       └── link.tsx      # Accessible NavLink primitive with route memoization
+│   │   └── ui/           # Paved Path UI Primitives (Button, Badge, Card, Dialog, Layout, Typography, Input, NavLink, Boundary, ThemeToggle, Tokens)
+│   │       ├── boundary.tsx     # Systematic AsyncBoundary (Solid 2.0 <Errored> + <Loading>)
+│   │       ├── input.tsx        # Derived-signal Input primitive (zero EFFECT_RELAY_TEAR)
+│   │       ├── link.tsx         # Accessible NavLink primitive with route memoization
+│   │       └── theme-toggle.tsx # Systematic ThemeToggle primitive (zero-FOUC dark/light mode)
 │   ├── lib/              # State & Service Integrations
-│   │   ├── connect.ts    # ConnectRPC type-safe client pipeline
+│   │   ├── connect.ts    # ConnectRPC type-safe client pipeline with transport injection
 │   │   ├── index.ts      # Unified lib exports
-│   │   ├── spacetime.ts  # SpacetimeDB reactive signal bridge
+│   │   ├── spacetime.ts  # Dual-mode SpacetimeDB adapter (Live / Offline Sandbox)
 │   │   └── telemetry.tsx # SSR-Safe Unified Telemetry Context Provider & useTelemetry hook
 │   └── schema/           # Schema as Single Source of Truth (SSOT)
-│       ├── connect.ts    # ConnectRPC message & service contracts
+│       ├── connect.ts    # ConnectRPC service & generated Protobuf re-exports
 │       ├── index.ts      # Centralized schema export
-│       ├── spacetimedb.ts# SpacetimeDB table & reducer schemas
+│       ├── spacetimedb.ts# SpacetimeDB adapter, table & reducer contracts
 │       └── telemetry.ts  # Unified telemetry state & event log SSOT contracts
 ├── tsconfig.json         # Strict TypeScript compiler options
-└── vite.config.ts        # Vite + Panda CSS + Solid 2.0 compiler pipeline
+├── vite.config.ts        # Vite + Panda CSS + Solid 2.0 compiler pipeline
+└── vitest.config.ts      # Vitest + happy-dom + Solid 2.0 diagnostics test config
 ```
 
 ---
@@ -159,34 +140,24 @@ bun install
 ```bash
 bun run dev
 ```
-Open [http://localhost:3000](http://localhost:3000). Solid Reactivity Diagnostics dev server is available at [http://localhost:3000/__solid/diagnostics](http://localhost:3000/__solid/diagnostics).
+This launches both the ConnectRPC backend ([http://localhost:8080/healthz](http://localhost:8080/healthz)) and the Solid 2.0 Vite client ([http://localhost:3000](http://localhost:3000)) via `scripts/dev.ts`. Solid Reactivity Diagnostics dev panel is available at [http://localhost:3000/__solid/diagnostics](http://localhost:3000/__solid/diagnostics).
 
-### Code Quality & Verification
+### Pre-Commit Verification
 
 ```bash
-# Lint with Oxlint and verify format with Biome
-bun run check
-
-# Format files and organize imports
-bun run format
-
-# Run TypeScript typechecker
-bun run typecheck
-
-# Build for production
-bun run build
+bun run codegen && bun run check && bun run typecheck && bun run build
 ```
 
 ---
 
 ## 🧩 Upstream Ecosystem Bridge (`patches/`)
 
-Solid.js 2.0 introduces major architectural improvements (fine-grained async computations, removal of `splitProps` / `onMount` in favor of direct property access and `onCleanup`).
+Solid.js 2.0 introduces major architectural improvements (fine-grained async computations, removal of `splitProps` / `onMount` in favor of direct property access and `onSettled`/`onCleanup`).
 
-To allow headless UI component libraries powered by Zag.js (`@ark-ui/solid`) to run smoothly on Solid 2.0 without runtime crashes, this baseline includes a lightweight compatibility bridge via Bun's `patchedDependencies`:
+To allow headless UI component libraries powered by Zag.js (`@ark-ui/solid`) to run smoothly on Solid 2.0 without runtime crashes, this baseline includes a scoped compatibility bridge via Bun's `patchedDependencies`:
 - Restores shim interfaces for `splitProps`, `mergeProps`, and `onMount`.
 - Adds `provider.Provider = provider` for React/Solid 1.x style context providers.
-- Sets `ownedWrite: true` for internal Zag.js signal updates.
+- Scopes `ownedWrite: true` strictly to calls originating from `@zag-js` or `@ark-ui` via call-stack inspection so application code never masks `REACTIVE_WRITE_IN_OWNED_SCOPE`.
 - Preserves native observe/dev diagnostic branches cleanly without polluting global namespaces.
 
 This ensures you can build with full Solid 2.0 reactivity today while maintaining 100% accessible Ark UI primitives.

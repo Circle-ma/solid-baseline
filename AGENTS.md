@@ -1,112 +1,77 @@
-# Agent Development & Operational Guidelines (2026 Paved Path Edition)
+# Architecture & Operational Constitution (2026 Paved Path Edition)
 
-Welcome, AI Agent. This document outlines your operational boundaries, development philosophy, and execution requirements for this project.
-
-## Core Philosophical Directive: 鋪鐵軌而非設陷阱 (Lay the Rails, Don't Set Traps)
-
-When generating UI and business logic, you must operate within strict rails:
-1. **Never freestyle styles**: You must NEVER invent arbitrary CSS values (`padding: "13px"`, `color: "#3b82f6"`). The compiler has `strictTokens: true` enabled and will reject your code if you violate the token dictionary.
-2. **Never write inline styles (`style={{ ... }}` is strictly BANNED)**: The framework strips the `style` attribute from all UI primitives at the type level. Passing `style` causes a TypeScript compilation error.
-3. **Never push with margins**: Declare Margin Dead. Components never dictate their outer positioning. All spacing belongs to the parent container via `gap`.
-4. **Never invent arbitrary z-indices**: Magic z-index numbers (`60`, `50`) destroy the stacking context. Always use canonical stacking tokens (`"sticky"`, `"overlay"`, `"modal"`).
-5. **Never guess schemas**: Schema is the Single Source of Truth. All data types must import from `~/schema`.
-6. **Never use raw HTML elements in features**: Use Systematic UI primitives from `~/components/ui`.
-7. **Never use type escape hatches**: `as any`, `@ts-ignore`, and `@ts-expect-error` are strictly banned.
+This document is the Single Source of Truth (SSOT) for all architectural invariants, directory boundaries, toolchain protocols, and design system contracts.
 
 ---
 
-## 1. Toolchain & Command Protocol
+## 1. Toolchain & Protocol
 
-- **Architecture**: Solid 2.0 Start-Mode SPA (`start: true, ssr: false, diagnostics: true`). Follows the official 2.0 convention (`src/Document.tsx` + `src/App.tsx`), with instant 1-boolean migration to streaming SSR (`ssr: true`).
-- **Runtime**: Strictly `bun` and `bunx`. Never execute `npm`, `npx`, `yarn`, or `pnpm`.
-- **Formatting**: `bun run format` (`biome format --write .`).
-- **Linting & Rail Verification**: `bun run check` (`oxlint src && biome check . && bun run scripts/check-rails.ts`).
-- **Type Checking**: `bun run typecheck` (`tsc --noEmit`).
-- **Build**: `bun run build` (`panda codegen && vite build`).
+- **Architecture**: Solid 2.0 Start-Mode SPA (`start: true, ssr: false, diagnostics: true`).
+- **Runtime**: Strictly `bun` and `bunx`. Never invoke `npm`, `npx`, `yarn`, or `pnpm`.
+- **Pre-Commit Verification**: `bun run check && bun run typecheck` must pass with 0 errors and 0 warnings.
+- **Commands**:
+  - Format: `bun run format` (`biome format --write .`)
+  - Rails Gatekeeper: `bun run check:rails` (`bun run scripts/check-rails.ts`)
+  - Check Pipeline: `bun run check` (`oxlint src && biome check . && bun run check:rails && vitest run`)
+  - Typecheck: `bun run typecheck` (`tsc --noEmit`)
+  - Codegen: `bun run codegen` (`panda codegen --spec`)
+  - Build: `bun run build` (`panda codegen && vite build`)
 
 ---
 
-## 2. Design System Rails: The Token Closed World
+## 2. Architectural Boundaries & Directory Matrix
 
-All visual properties must resolve to tokens exported from `~/components/ui/tokens`:
-- **Spacing Scale (4px / 8px Grid)**:
-  `"0"`, `"1"` (4px), `"1.5"` (6px), `"2"` (8px), `"2.5"` (10px), `"3"` (12px), `"4"` (16px), `"5"` (20px), `"6"` (24px), `"8"` (32px), `"10"` (40px), `"12"` (48px).
+| Directory            | Allowed Imports                                        | Forbidden Imports / Actions                                                                                   | Responsibility                                                       |
+| :------------------- | :----------------------------------------------------- | :------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------- |
+| `src/routes/`        | `~/components/ui`, `~/lib`, `~/schema`, Solid core     | `styled-system/*`, raw DOM (`div`, `button`, etc.), direct `fetch`, `DbConnection`, ad-hoc `type`/`interface` | Routed page views. No direct external I/O or inline styling.         |
+| `src/lib/`           | `~/schema`, `@connectrpc/*`, `spacetimedb`, Solid core | Raw DOM, UI primitives, ad-hoc `type`/`interface`                                                             | State machines, Context Providers, SpacetimeDB & ConnectRPC clients. |
+| `src/schema/`        | `@bufbuild/protobuf`, generated contracts              | UI primitives, DOM, runtime side-effects                                                                      | Pure SSOT data schemas, tables, reducers, RPC contracts.             |
+| `src/components/ui/` | `styled-system/*`, `@ark-ui/solid`, Solid core         | Feature routes, schema reducers, ad-hoc inline styles                                                         | Systematic atomic & compound design system primitives.               |
+
+---
+
+## 3. Design System Token Closed World
+
+All visual properties must resolve to tokens derived from `~/components/ui/tokens`:
+- **Typography Fonts**:
+  - `heading`: `'Google Sans Flex', 'MiSans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif`
+  - `body`: `'Geist', 'MiSans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif`
+  - `mono`: `'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace`
+- **Spacing Scale (4px/8px Grid)**: `"0"`, `"1"`, `"1.5"`, `"2"`, `"2.5"`, `"3"`, `"4"`, `"5"`, `"6"`, `"8"`, `"10"`, `"12"`, `"16"`, `"20"`.
 - **Surfaces**: `"bg.canvas"`, `"bg.default"`, `"bg.elevated"`, `"bg.subtle"`, `"bg.muted"`, `"bg.backdrop"`.
-- **Foregrounds**: `"fg.default"`, `"fg.muted"`, `"fg.subtle"`.
-- **Borders**: `"border.subtle"`, `"border.default"`.
-- **Accents**: `"accent.default"`, `"accent.emphasized"`, `"accent.fg"`.
-- **Status & Feedback Tokens**:
-  - Success: `"success.default"`, `"success.subtle"`, `"success.fg"`, `"success.border"`, `"success.text"`.
-  - Danger / Error: `"danger.default"`, `"danger.subtle"`, `"danger.fg"`, `"danger.border"`, `"danger.text"`.
-  - Warning: `"warning.default"`, `"warning.subtle"`, `"warning.fg"`, `"warning.border"`, `"warning.text"`.
-  - Info: `"info.default"`, `"info.subtle"`, `"info.fg"`, `"info.border"`, `"info.text"`.
-- **Stacking Context (Z-Index Scale)**:
-  `"hide"` (-1), `"base"` (0), `"docked"` (10), `"dropdown"` (1000), `"sticky"` (1100), `"banner"` (1200), `"overlay"` (1300), `"modal"` (1400), `"popover"` (1500), `"toast"` (1600), `"tooltip"` (1700), `"max"` (9999).
+- **Foregrounds**: `"fg.default"`, `"fg.muted"`, `"fg.subtle"`, `"accent.default"`, `"accent.emphasized"`, `"accent.fg"`.
+- **Borders**: `"border.subtle"`, `"border.default"`, status borders.
+- **Stacking Scale (Z-Index)**: `"hide"` (-1), `"base"` (0), `"docked"` (10), `"dropdown"` (1000), `"sticky"` (1100), `"banner"` (1200), `"overlay"` (1300), `"modal"` (1400), `"popover"` (1500), `"toast"` (1600), `"tooltip"` (1700), `"max"` (9999).
+- **Radii Scale**: `"none"`, `"sm"`, `"md"`, `"l1"`, `"l2"`, `"l3"`, `"full"`.
 
 ---
 
-## 3. Layout & UI Rails: Containers & Compounds
+## 4. Solid 2.0 Invariants
 
-Never write raw layout styling, inline styles, or raw unstyled HTML elements. Use pre-composed primitives from `~/components/ui`:
-- `<Container maxW="4xl">`: Centered responsive container bounded by token scale.
-- `<VStack gap="4">`: Vertical column stack (supports `position`, `zIndex`, `minH`, `maxH`, `w`, `p`, `px`, `py`, `bg`, `color`, `boxShadow`, `borderWidth`, `borderColor`).
-- `<HStack gap="3">`: Horizontal row stack (supports `position`, `zIndex`, `minH`, `maxH`, `w`, `flexWrap`, `p`, `px`, `py`, `bg`, `color`, `boxShadow`).
-- `<Grid columns={2} gap="6">`: Responsive grid layout.
-- `<Box>`: Viewport, canvas, or layered box (supports `position`, `zIndex`, `inset`, `minH`, `w`, `bg`, `p`, `borderRadius`, `borderWidth`, `borderColor`).
-- `<Divider />`: Visual section separator (`borderColor="border.subtle"`).
-- `<Button variant="solid" size="sm">`: Systematic button primitive.
-  - Variants: `"solid"`, `"outline"`, `"ghost"`, `"subtle"`, `"danger"`, `"success"`.
-  - Sizes: `"xs"`, `"sm"`, `"md"`, `"lg"`.
-- `<Badge variant="subtle" intent="success" size="sm">`: Semantic status badge primitive.
-  - Variants: `"subtle"`, `"solid"`, `"outline"`.
-  - Intents: `"default"`, `"success"`, `"danger"`, `"warning"`, `"info"`.
-  - Sizes: `"sm"`, `"md"`.
-- `<Input size="md">`: Systematic input primitive with Solid 2.0 draft synchronization (`createSignal` + `createEffect`), preventing `[UNCOMMITTED_INPUT_OVERWRITTEN]` diagnostics.
-- `<NavLink href="...">`: Accessible navigation link primitive with active route matching and focus-visible rings.
-- `<AsyncBoundary>`: Systematic async boundary combining Solid 2.0 `<Errored>` (with `err()` getter and `reset` action) and `<Loading on={...}>` with token-based fallback surfaces.
-- `<Heading>`, `<Text>`, `<Code>`: Zero-runtime typography primitives powered by Panda recipes.
-  - Variants: `tone` (`"default"`, `"muted"`, `"subtle"`, `"accent"`, `"success"`, `"danger"`, `"warning"`, `"info"`), `weight` (`"normal"`, `"medium"`, `"semibold"`, `"bold"`), `leading` (`"none"`, `"tight"`, `"snug"`, `"normal"`, `"relaxed"`), `tracking` (`"tighter"`, `"tight"`, `"normal"`, `"wide"`, `"wider"`, `"widest"`).
-  - Use `tabular` boolean prop for numbers and timestamps to prevent horizontal layout shift.
-  - Legacy props `color=`, `fontWeight=`, `lineHeight=`, and `letterSpacing=` are strictly banned in favor of recipe variants.
-- `<Card.Root>`: Encapsulated card surface with pre-configured 24px padding and elevation.
-- `<Dialog.Content>`: Encapsulated modal container with pre-configured 24px padding, 20px gap, max width, and top-right close trigger.
+1. **No Destructuring**: Component props must never be destructured (`props.prop` only).
+2. **Prop Omission**: Strip handled props using `omitProps(props, ...keys, "class", "children", "style")`.
+3. **Signal Attribution**: Always provide `{ name: "..." }` when creating signals, memos, or optimistic states.
+4. **No Owned Writes**: Never write signals inside owned scopes without `{ ownedWrite: true }`. Use derived writable signals `createSignal(() => props.value ?? "")`.
+5. **Deterministic Hydration**: Initial render seeds must be deterministic; generate dynamic client data only in `onSettled` or user actions.
+6. **Optimistic Actions**: In transition handlers, acknowledge holds prior to the first async yield using `createOptimistic`.
+7. **Unidirectional Flow**: State mutations must be triggered via Reducer transactions or Context Actions; never mutate stores via direct array manipulations.
 
 ---
 
-## 4. Solid.js 2.0 Invariants
+## 5. Automated Rail Gatekeeper (`scripts/check-rails.ts`)
 
-- **No Prop Destructuring**: Always use `props.property`.
-- **Props Forwarding**: Use `const rest = omitProps(props, "class", "children", "style")` from `"~/components/ui/tokens"`. Never cast `"style" as any`.
-- **Signal Invocation**: In JSX values, call accessors: `<Text>{count()}</Text>`.
-- **Signal Attribution**: Always provide `{ name: "..." }` when creating signals and memos for `@solidjs/diagnostics`.
-- **SSR-Safe State & Context**: Never declare module-scope mutable signals or stores. Mount state via default-less Context Providers (`TelemetryProvider` + `useTelemetry`).
-- **Deterministic Hydration**: Use deterministic seed values during initial server rendering (`timestamp: "00:00:00"`, `clientIdentity: "usr_local_node_01"`). Generate dynamic client values only inside `onSettled` or actions.
-- **Actions & Optimistic State**: In transition handlers, use `createOptimistic(false, { name: "..." })` and `action(function* () { setFlag(true); ... })` to immediately acknowledge the hold before the first `yield`.
-- **Store Mutations**: Modify stores via draft closures: `setStore(draft => { draft.prop = val; })`.
-- **Web Primitives**: Import `Dynamic`, `Portal`, and `isServer` from `@solidjs/web`.
-
----
-
-## 5. Data Layer & Schema SSOT
-
-- Tables, reducers, and RPC types must be derived from `src/schema/`.
-- No ad-hoc `interface` or `type` declarations in `src/routes/` or `src/lib/`.
-- SpacetimeDB state changes run through transactional reducers (`callReducer`).
-
----
-
-## 6. Automated Rail Gatekeeper (`scripts/check-rails.ts`)
-
-The verification script enforces 12 architectural invariants:
-1. `INLINE_STYLE_FORBIDDEN`: No `style=` attributes anywhere.
-2. `HEX_COLOR_HARDCODED`: No `#hex` colors anywhere.
+The semantic AST analyzer enforces 14 invariants across `src/`:
+1. `INLINE_STYLE_FORBIDDEN`: No `style=` attributes.
+2. `HEX_COLOR_HARDCODED`: No `#hex` colors in JSX attributes or style objects (excluding URLs/anchors).
 3. `RAW_COLOR_FUNCTION`: No `rgb()`, `rgba()`, `hsl()`, `hsla()`, `oklch()` in `src/`.
-4. `ARBITRARY_Z_INDEX`: No numeric `zIndex` values.
-5. `MARGIN_PROP_FORBIDDEN`: Global ban on `margin`, `m`, `mt`, `mb`, `ml`, `mr`, `mx`, `my`, `marginTop`, `marginBottom`, `marginLeft`, `marginRight`, `marginInline`, `marginBlock` props.
-6. `RAW_DOM_ELEMENT_BANNED`: Outside `src/components/ui/` and `src/Document.tsx`, strictly forbid raw `<div`, `<span`, `<p`, `<h1`..`<h6`, `<button`, `<a `, `<input`, `<textarea`, `<select`, `<label`, `<hr`, `<svg`, `<table`.
-7. `ADHOC_CSS_IN_FEATURE_BANNED`: Outside `src/components/ui/`, strictly forbid importing from `"styled-system/css"`, `"styled-system/patterns"`, or `"styled-system/jsx"`.
-8. `UNSCOPED_TYPE_DEFINITION`: In `src/routes/` and `src/lib/`, forbid declaring ad-hoc `interface` or `type` definitions (all contracts and context types must live in `src/schema/` or `src/components/ui/`).
-9. `TYPE_ESCAPE_HATCH_BANNED`: Forbid `as any`, `@ts-ignore`, and `@ts-expect-error` across `src/`.
-10. `LEGACY_SOLID_API_BANNED`: Forbid legacy Solid 1.x APIs (`onMount`, `splitProps`, `mergeProps`, `createResource`, `createComputed`, `Suspense`, `SuspenseList`, `ErrorBoundary`, `Index`, `batch`, `.Provider`).
-11. `UNNAMED_REACTIVE_PRIMITIVE`: Enforce diagnostic name attribute (e.g. `{ name: "..." }`) within 4 lines on `createSignal`, `createMemo`, and `createOptimistic`.
-12. `LEGACY_TYPOGRAPHY_PROP_BANNED`: Forbid legacy props (`color=`, `fontWeight=`, `lineHeight=`, `letterSpacing=`) on `<Text>`, `<Heading>`, `<Code>`.
+4. `ARBITRARY_Z_INDEX`: TypeChecker verification ensuring all `zIndex` values resolve to canonical tokens.
+5. `MARGIN_PROP_FORBIDDEN`: Push margins banned globally (only `ml/mr/mx="auto"` allowed for flex alignment).
+6. `RAW_DOM_ELEMENT_BANNED`: Raw HTML tags banned outside `src/components/ui/` and `src/Document.tsx`.
+7. `ADHOC_CSS_IN_FEATURE_BANNED`: Importing `styled-system/*` banned outside `src/components/ui/`.
+8. `UNSCOPED_TYPE_DEFINITION`: Ad-hoc `interface`/`type` banned in `src/routes/` and `src/lib/`.
+9. `TYPE_ESCAPE_HATCH_BANNED`: `as any`, `@ts-ignore`, and `@ts-expect-error` banned.
+10. `LEGACY_SOLID_API_BANNED`: Solid 1.x APIs (`onMount`, `splitProps`, `mergeProps`, etc.) banned.
+11. `UNNAMED_REACTIVE_PRIMITIVE`: Name attribute `{ name: "..." }` enforced on reactive primitives.
+12. `LEGACY_TYPOGRAPHY_PROP_BANNED`: Legacy props (`color=`, `fontWeight=`, etc.) banned on `<Text>`/`<Heading>`/`<Code>`.
+13. `COMPONENT_PARAM_DESTRUCTURE_BANNED`: Component parameter destructuring banned.
+14. `UNSCOPED_IO_CALL_BANNED`: Direct `fetch()` calls or `DbConnection` instantiations banned in `src/routes/`.

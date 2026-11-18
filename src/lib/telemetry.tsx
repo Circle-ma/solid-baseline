@@ -1,3 +1,4 @@
+import { create } from "@bufbuild/protobuf";
 import type { ParentComponent } from "solid-js";
 import {
   action,
@@ -5,16 +6,23 @@ import {
   createOptimistic,
   createSignal,
   createStore,
+  onCleanup,
   onSettled,
+  untrack,
   useContext,
 } from "solid-js";
-import type {
-  EventLogRecord,
-  HealthCheckRequest,
-  HealthCheckResponse,
-  TelemetryContextValue,
-  TxReducerParams,
+import {
+  type EventLogRecord,
+  type HealthCheckRequest,
+  HealthCheckRequestSchema,
+  type HealthCheckResponse,
+  type SpacetimeClientAdapter,
+  SystemService,
+  type TelemetryContextValue,
+  type TxReducerParams,
 } from "~/schema";
+import { getServiceClient } from "./connect";
+import { createSpacetimeAdapter, reconcileTableStore } from "./spacetime";
 
 const TelemetryContext = createContext<TelemetryContextValue>();
 
@@ -25,9 +33,6 @@ const TelemetryContext = createContext<TelemetryContextValue>();
  */
 export const TelemetryProvider: ParentComponent = (props) => {
   // SpacetimeDB Reactive Signals (with named diagnostics attribution)
-  const [isConnected, setIsConnected] = createSignal(false, {
-    name: "spacetime-connected",
-  });
   const [connectionMode, setConnectionMode] = createSignal<"live" | "local-cache">("local-cache", {
     name: "spacetime-connection-mode",
   });
@@ -36,6 +41,15 @@ export const TelemetryProvider: ParentComponent = (props) => {
   });
   const [latencyMs, setLatencyMs] = createSignal<number | null>(null, {
     name: "spacetime-latency",
+  });
+
+  // Dual-mode SpacetimeDB adapter
+  let adapter: SpacetimeClientAdapter = createSpacetimeAdapter(
+    untrack(() => connectionMode()) === "live" ? "live" : "offline-sandbox",
+  );
+
+  const [isConnected, setIsConnected] = createSignal(adapter.isConnected, {
+    name: "spacetime-connected",
   });
 
   // Reactive Table Store initialized with deterministic SSR seeds
@@ -56,6 +70,35 @@ export const TelemetryProvider: ParentComponent = (props) => {
     },
   ]);
 
+  let cleanupListeners: (() => void) | null = null;
+
+  function bindAdapterListeners(currentAdapter: SpacetimeClientAdapter) {
+    cleanupListeners?.();
+
+    const unsubInsert = currentAdapter.onInsert("event_log", (newRecord) => {
+      const current = untrack(() => records);
+      const updated = [newRecord, ...current.slice(0, 49)];
+      reconcileTableStore(setRecords, updated, "id");
+    });
+
+    const unsubConn = currentAdapter.onConnectionStateChange((connected) => {
+      setIsConnected(connected);
+    });
+
+    cleanupListeners = () => {
+      unsubInsert();
+      unsubConn();
+    };
+  }
+
+  // Subscribe to adapter events to update store via unidirectional data flow
+  bindAdapterListeners(adapter);
+
+  onCleanup(() => {
+    cleanupListeners?.();
+    adapter.disconnect();
+  });
+
   // ConnectRPC Optimistic Signal and Action Coordination
   const [isRpcPending, setIsRpcPending] = createOptimistic(false, {
     name: "rpc-pending",
@@ -67,17 +110,14 @@ export const TelemetryProvider: ParentComponent = (props) => {
     name: "rpc-latency",
   });
 
-  // Transition-coordinated action acknowledging hold prior to yield
-  const checkSystemHealth = action(function* (_request?: HealthCheckRequest) {
+  // Transition-coordinated action making real ConnectRPC network call
+  const checkSystemHealth = action(function* (request?: Partial<HealthCheckRequest>) {
     setIsRpcPending(true);
     const start = performance.now();
     try {
-      yield new Promise((resolve) => setTimeout(resolve, 60));
-      const result: HealthCheckResponse = {
-        status: "SERVING",
-        version: "2026.1.0",
-        uptimeSeconds: Math.floor(performance.now() / 1000),
-      };
+      const client = getServiceClient(SystemService);
+      const req = create(HealthCheckRequestSchema, request ?? {});
+      const result: HealthCheckResponse = yield client.checkHealth(req);
       setRpcResponse(result);
       setRpcLatencyMs(Math.round((performance.now() - start) * 10) / 10);
       return result;
@@ -93,36 +133,30 @@ export const TelemetryProvider: ParentComponent = (props) => {
   });
 
   function callReducer(params: TxReducerParams) {
-    const start = performance.now();
-    const newRecord: EventLogRecord = {
-      id: `rec_${Math.random().toString(36).substring(2, 8)}`,
-      sender: clientIdentity(),
-      action: params.action,
-      payload: params.payload,
-      timestamp: new Date().toLocaleTimeString(),
-    };
-
-    setRecords((draft) => {
-      draft.unshift(newRecord);
-      if (draft.length > 50) draft.pop();
-    });
-
-    const duration = Math.round((performance.now() - start) * 100) / 100;
-    setLatencyMs(duration);
+    adapter
+      .callReducer(params)
+      .then((res) => {
+        setLatencyMs(res.executionDurationMs);
+      })
+      .catch(() => {
+        setLatencyMs(null);
+      });
   }
 
   function toggleSimulationMode() {
-    setIsConnected((prev) => {
-      const next = !prev;
-      setConnectionMode(next ? "live" : "local-cache");
-      return next;
-    });
+    const nextMode = connectionMode() === "live" ? "local-cache" : "live";
+    setConnectionMode(nextMode);
+    adapter.disconnect();
+    adapter = createSpacetimeAdapter(nextMode === "live" ? "live" : "offline-sandbox");
+    setIsConnected(adapter.isConnected);
+    bindAdapterListeners(adapter);
+    if (nextMode === "live") {
+      adapter.connect();
+    }
   }
 
   function clearRecords() {
-    setRecords((draft) => {
-      draft.length = 0;
-    });
+    reconcileTableStore(setRecords, [], "id");
   }
 
   const value: TelemetryContextValue = {

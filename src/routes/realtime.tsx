@@ -1,6 +1,7 @@
 import { createMemo, For, Show } from "solid-js";
 import { Badge, Button, Card, Code, HStack, Text, VStack } from "~/components/ui";
 import { useTelemetry } from "~/lib";
+import { HealthCheckStatus } from "~/schema";
 
 export default function Realtime() {
   const telemetry = useTelemetry();
@@ -143,9 +144,17 @@ export default function Realtime() {
             </VStack>
             <Badge
               variant="subtle"
-              intent={rpcStatus() === "SERVING" ? "success" : rpcStatus() ? "danger" : "default"}
+              intent={
+                rpcStatus() === HealthCheckStatus.SERVING
+                  ? "success"
+                  : rpcStatus() !== null
+                    ? "danger"
+                    : "default"
+              }
             >
-              {rpcStatus() ? `Status: ${rpcStatus()}` : "Uncalled"}
+              {rpcStatus() !== null
+                ? `Status: ${rpcStatus() === HealthCheckStatus.SERVING ? "SERVING" : "NOT_SERVING"}`
+                : "Uncalled"}
             </Badge>
           </HStack>
         </Card.Header>
@@ -200,10 +209,10 @@ export default function Realtime() {
                   <HStack gap="2" alignItems="center">
                     <Badge
                       variant="solid"
-                      intent={res().status === "SERVING" ? "success" : "danger"}
+                      intent={res().status === HealthCheckStatus.SERVING ? "success" : "danger"}
                       size="sm"
                     >
-                      {res().status}
+                      {res().status === HealthCheckStatus.SERVING ? "SERVING" : "NOT_SERVING"}
                     </Badge>
                     <Text size="xs" tone="muted">
                       Version: {res().version}
